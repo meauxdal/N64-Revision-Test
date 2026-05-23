@@ -1,0 +1,42 @@
+name: Build N64 ROM
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/dragonminded/libdragon:latest
+
+    env:
+      N64_INST: /n64_toolchain
+      LIBDRAGON_BRANCH: preview
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache libdragon build
+        id: cache-libdragon
+        uses: actions/cache@v4
+        with:
+          path: /n64_toolchain
+          key: libdragon-preview-${{ github.run_id }}
+          restore-keys: |
+            libdragon-preview-
+
+      - name: Build libdragon (preview)
+        if: steps.cache-libdragon.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 --branch preview \
+            https://github.com/DragonMinded/libdragon.git /tmp/libdragon
+          cd /tmp/libdragon
+          ./build.sh $N64_INST
+
+      - name: Build ROM
+        run: make all
+
+      - name: Upload ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: n64-hardware-test
+          path: n64_hardware_test.z64
