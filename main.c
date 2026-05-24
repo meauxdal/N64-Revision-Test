@@ -1,17 +1,3 @@
-/**
- * n64-hardware-test
- * Hardware revision characterization ROM for Nintendo 64.
- *
- * Output hierarchy:
- *   1. Region (PIF)
- *   2. Identifiers (PRId, FCR0)
- *   3. Observed behaviors (bug probes)
- *
- * Adding a new probe:
- *   1. Write a probe_*() function returning probe_result_t.
- *   2. Add an entry to the probes[] table in main().
- */
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -103,44 +89,49 @@ static uint32_t read_fcr0(void) {
  * sequence on fixed inputs (0 * inf, 2 * 3). PASS = results match.
  * ---------------------------------------------------------------------- */
 
-static probe_result_t probe_mulmul(void) {
-    float broken, working;
-    const float zero = 0.0f;
-    const float inf  = __builtin_inff();
-    const float a    = 2.0f;
-    const float b    = 3.0f;
+/* All four operands are function parameters so the compiler has already
+   loaded them into FP registers before either asm block executes.
+   This prevents any compiler-generated loads from slipping between
+   the two mul.s instructions. Pattern from HailToDodongo/ctest.cpp. */
+typedef struct { float broken; float working; } mulmul_result_t;
 
-    uint32_t fcr31_saved = C1_FCR31();
-    C1_WRITE_FCR31(fcr31_saved & ~(C1_ENABLE_OVERFLOW | C1_ENABLE_DIV_BY_0 | C1_ENABLE_INVALID_OP));
-
+static mulmul_result_t mulmul_test(float a1, float b1, float a2, float b2) {
+    mulmul_result_t res;
     __asm__ volatile (
         "mul.s $f0, %1, %2\n"
-        "mul.s %0, %3, %4\n"
-        : "=f"(broken)
-        : "f"(zero), "f"(inf), "f"(a), "f"(b)
-        : "f0"
+        "mul.s $f1, %3, %4\n"
+        "mov.s %0, $f1\n"
+        : "=f"(res.broken)
+        : "f"(a1), "f"(b1), "f"(a2), "f"(b2)
+        : "f0", "f1"
     );
     __asm__ volatile (
         "mul.s $f0, %1, %2\n"
         "nop\n"
-        "mul.s %0, %3, %4\n"
-        : "=f"(working)
-        : "f"(zero), "f"(inf), "f"(a), "f"(b)
-        : "f0"
+        "mul.s $f1, %3, %4\n"
+        "mov.s %0, $f1\n"
+        : "=f"(res.working)
+        : "f"(a1), "f"(b1), "f"(a2), "f"(b2)
+        : "f0", "f1"
     );
+    return res;
+}
+
+static probe_result_t probe_mulmul(void) {
+    uint32_t fcr31_saved = C1_FCR31();
+    C1_WRITE_FCR31(fcr31_saved & ~(C1_ENABLE_OVERFLOW | C1_ENABLE_DIV_BY_0 | C1_ENABLE_INVALID_OP));
+
+    mulmul_result_t r = mulmul_test(0.0f, __builtin_inff(), 2.0f, 3.0f);
 
     C1_WRITE_FCR31(fcr31_saved);
 
-    if (F32I(broken) != F32I(working))
-        return FAIL((uint64_t)F32I(broken) << 32 | (uint64_t)F32I(working));
+    if (F32I(r.broken) != F32I(r.working))
+        return FAIL((uint64_t)F32I(r.broken) << 32 | (uint64_t)F32I(r.working));
     return PASS();
 }
 
 /* -------------------------------------------------------------------------
  * BUG: sra — 32-bit arithmetic right shift leaks 64-bit state
- *
- * STUB: requires construction of 64-bit register state in inline asm.
- * Deferred pending test vector validation on hardware.
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_sra(void) {
@@ -187,9 +178,6 @@ static probe_result_t probe_sra(void) {
 
 /* -------------------------------------------------------------------------
  * BUG: mult — 32-bit signed multiply sign-extension anomaly
- *
- * STUB: requires construction of non-sign-extended 64-bit input state.
- * Deferred pending test vector validation on hardware.
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_mult(void) {
@@ -255,9 +243,6 @@ static probe_result_t probe_mult(void) {
 
 /* -------------------------------------------------------------------------
  * BUG: div — 32-bit signed divide sign-extension anomaly
- *
- * STUB: requires construction of non-sign-extended 64-bit input state.
- * Deferred pending test vector validation on hardware.
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_div(void) {
@@ -375,7 +360,6 @@ static void report(uint8_t pif_region, int tv_type,
         printf("\n");
     }
 
-    /* printf is redirected to USB by debug_init_usblog() - no separate debugf needed */
 }
 
 /* -------------------------------------------------------------------------
