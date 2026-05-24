@@ -1,5 +1,11 @@
 /**
  * n64-hardware-test
+ * Hardware revision characterization ROM for Nintendo 64.
+ *
+ * Output hierarchy:
+ *   1. Region (PIF)
+ *   2. Identifiers (PRId, FCR0)
+ *   3. Observed behaviors (bug probes)
  *
  * Adding a new probe:
  *   1. Write a probe_*() function returning probe_result_t.
@@ -138,7 +144,45 @@ static probe_result_t probe_mulmul(void) {
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_sra(void) {
-    return STUB();
+    /*
+     * Load 0x0123456789ABCDEF into a register, execute sra rd, rt, 16.
+     *
+     * VR4300 manual says result should be 0xFFFFFFFFFFFF89AB
+     * (sign-extended from bit 31 of the lower word, which is 1).
+     *
+     * Hardware produces 0x00000000456789AB
+     * (upper 32 bits filled from upper word of input, new bit 31 = 0).
+     *
+     * PASS = hardware behavior observed (expected on all known N64).
+     * FAIL with detail=1 = manual behavior (unexpected).
+     * FAIL with detail=result = something else entirely.
+     */
+    uint64_t result;
+
+    __asm__ volatile (
+        /* Build 0x0123456789ABCDEF in $t0 */
+        "lui    $t0, 0x0123\n"
+        "dsll   $t0, $t0, 16\n"
+        "ori    $t0, $t0, 0x4567\n"
+        "dsll   $t0, $t0, 16\n"
+        "ori    $t0, $t0, 0x89AB\n"
+        "dsll   $t0, $t0, 16\n"
+        "ori    $t0, $t0, 0xCDEF\n"
+        /* sra by 16 */
+        "sra    $t1, $t0, 16\n"
+        /* store full 64-bit result */
+        "sd     $t1, %0\n"
+        : "=m"(result)
+        :
+        : "$t0", "$t1"
+    );
+
+    const uint64_t hw_expected  = 0x00000000456789ABULL;
+    const uint64_t man_expected = 0xFFFFFFFFFFFF89ABULL;
+
+    if (result == hw_expected)  return PASS();
+    if (result == man_expected) return FAIL(1ULL);
+    return FAIL(result);
 }
 
 /* -------------------------------------------------------------------------

@@ -1,6 +1,16 @@
+[![Build N64 ROM](https://github.com/meauxdal/N64-Revision-Test/actions/workflows/build.yml/badge.svg)](https://github.com/meauxdal/N64-Revision-Test/actions/workflows/build.yml)
+
 ## n64-hardware-test
 
-**Identifier registers**
+**region from PIF**
+
+| PIF byte | Region |
+|----------|--------|
+| `0x00` | PAL |
+| `0x01` | NTSC |
+| `0x02` | MPAL |
+
+**known identifier registers**
 
 | Register | Field | Expected | Notes |
 |----------|-------|----------|-------|
@@ -9,7 +19,7 @@
 | CP1 FCR0 | impl [15:8] | `0x0B` | VR4300 FPU |
 | CP1 FCR0 | rev  [7:0]  | `0x00` | all known units |
 
-**PRId revision mapping (so far)**
+**known PRId revisions**
 
 | rev  | interpretation |
 |------|----------------|
@@ -21,16 +31,16 @@ Not all board revisions have been tested.
 
 ---
 
-**Bug probes**
+**bug probes**
 
-| Probe | What it tests | Expected on early units |
+| Probe | What it tests | Expected |
 |-------|--------------|------------------------|
-| `mulmul` | FP double-multiply hazard (NaN/Zero/Inf operands) | FAIL |
+| `mulmul` | FP double-multiply hazard (NaN/Zero/Inf operands) | FAIL (early units) / PASS |
 | `sra`    | 32-bit arithmetic right shift 64-bit state leak | STUB |
 | `mult`   | 32-bit signed multiply sign-extension anomaly | STUB |
 | `div`    | 32-bit signed divide sign-extension anomaly | STUB |
 
-STUB = probe scaffolded, asm not yet validated on hardware.
+STUB = wip pending help from n64brew folks.
 
 ---
 
