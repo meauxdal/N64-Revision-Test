@@ -404,45 +404,54 @@ static const probe_entry_t probes[] = {
  * Reporting
  * ---------------------------------------------------------------------- */
 
-static void report(int tv_type, uint32_t pif_boot_word,
+static void report(int tv_type,
                    uint8_t dmem_tvtype, uint8_t dmem_consoletype,
                    uint32_t prid, uint32_t fcr0, bool is_ique,
                    uint32_t mi_version,
-                   rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1)
+                   rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1, rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
 {
     probe_result_t results[NUM_PROBES];
     for (size_t i = 0; i < NUM_PROBES; i++)
         results[i] = probes[i].fn();
 
     printf("=== n64-revision-test ===\n");
-
-    printf("libdragon\n");
-    printf("  region  get_tv_type()     %s\n", tv_type_str(tv_type));
-    printf("  iQue    sys_bbplayer()    %s\n\n", is_ique ? "yes" : "no");
+    printf("\n");
 
     printf("PIF\n");
-//    printf("  boot word     0xBFC007E4  0x%08lX\n", (unsigned long)pif_boot_word); // cleared before we read it, so not useful)
-    printf("  tv type       0xA4000009  0x%02X\n",  (unsigned)dmem_tvtype);
-    printf("  console type  0xA400000B  0x%02X\n\n",  (unsigned)dmem_consoletype);
+    printf("  tv type     0xA4000009  0x%02X  %s\n",
+        (unsigned)dmem_tvtype, tv_type_str(tv_type));
+    printf("  console     0xA400000B  0x%02X  %s\n",
+        (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
+    printf("\n");
 
     printf("CP0 PRId  0x%08lX\n", (unsigned long)prid);
     printf("  [15:8] ID                 0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
-    printf("  [7:0]  revision           0x%02X\n\n", (unsigned)(prid >> 0) & 0xFF);
+    printf("  [7:0]  revision           0x%02X\n", (unsigned)(prid >> 0) & 0xFF);
+    printf("\n");
 
     printf("CP1 FCR0  0x%08lX\n", (unsigned long)fcr0);
     printf("  [15:8] implementation     0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
-    printf("  [7:0]  revision           0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
+    printf("  [7:0]  revision           0x%02X\n", (unsigned)(fcr0 >> 0) & 0xFF);
+    printf("\n");
 
     printf("MI_VERSION      0x%08lX\n", (unsigned long)mi_version);
-    printf("  IO version    0x%02X\n\n", (unsigned)(mi_version & 0xFF));
+    printf("  IO version      0x%02X\n", (unsigned)(mi_version & 0xFF));
+    printf("\n");
 
     printf("RDRAM\n");
-    printf("  chip 0  mfr=0x%04X (%s)  code=0x%04X\n",
+    printf("  chip 0        mfr=0x%04X (%s)  code=0x%04X\n",
         rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
-    printf("  chip 2  mfr=0x%04X (%s)  code=0x%04X\n\n",
+    printf("  chip 2        mfr=0x%04X (%s)  code=0x%04X\n",
         rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
+    if (rdram2.manu != 0)
+        printf("  chip 4      mfr=0x%04X (%s)  code=0x%04X\n",
+            rdram2.manu, rdram_manu_str(rdram2.manu), rdram2.code);
+    if (rdram3.manu != 0)
+        printf("  chip 6      mfr=0x%04X (%s)  code=0x%04X\n",
+            rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
+    printf("\n");
 
-    printf("hw bugs\n");
+    printf("VR4300 bugs\n");
     for (size_t i = 0; i < NUM_PROBES; i++) {
         printf("  %-6s  %s", probes[i].tag, status_str(results[i].status));
         if (results[i].status == RESULT_FAIL && results[i].detail != 0) {
@@ -466,19 +475,20 @@ int main(void) {
     console_set_render_mode(RENDER_MANUAL);
     console_clear();
 
-    int      tv_type          = get_tv_type();
-    uint32_t pif_boot_word    = read_pif_boot_word();
-    uint8_t  dmem_tvtype      = read_dmem_tvtype();
-    uint8_t  dmem_consoletype = read_dmem_consoletype();
-    uint32_t prid             = read_prid();
-    uint32_t fcr0             = read_fcr0();
-    bool     is_ique          = sys_bbplayer();
-    uint32_t mi_version       = read_mi_version();
+    int      tv_type            = get_tv_type();
+    uint8_t  dmem_tvtype        = read_dmem_tvtype();
+    uint8_t  dmem_consoletype   = read_dmem_consoletype();
+    uint32_t prid               = read_prid();
+    uint32_t fcr0               = read_fcr0();
+    bool     is_ique            = sys_bbplayer();
+    uint32_t mi_version         = read_mi_version();
     rdram_manufacturer_t rdram0 = read_rdram_manufacturer(0);
     rdram_manufacturer_t rdram1 = read_rdram_manufacturer(2);
+    rdram_manufacturer_t rdram2 = read_rdram_manufacturer(4);
+    rdram_manufacturer_t rdram3 = read_rdram_manufacturer(6);
 
-    report(tv_type, pif_boot_word, dmem_tvtype, dmem_consoletype,
-           prid, fcr0, is_ique, mi_version, rdram0, rdram1);
+    report(tv_type, dmem_tvtype, dmem_consoletype,
+        prid, fcr0, is_ique, mi_version, rdram0, rdram1, rdram2, rdram3);
 
     console_render();
 

@@ -42,30 +42,36 @@ expected:
 
 **rev 0x10 unit (hardware, mulmul-affected)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`
+- MI_VERSION IO: `0x02` (expected; not yet confirmed for this unit)
+- RDRAM: not yet captured
 - mulmul - FAIL (this may still be bugged, WIP)
-- sra - FAIL  got=0x00000000_456789AB
-- mult - FAIL  got=0xFFFFFFFE_00000002
-- div - FAIL  got=0x2AAAAAB4_AAAAAAAB
+- sra    - FAIL  got=0x00000000_456789AB
+- mult   - FAIL  got=0xFFFFFFFE_00000002
+- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
 **rev 0x22 unit (mulmul fixed)**
 - PRId `0x00000B22`, FCR0 `0x00000A00`
+- MI_VERSION IO: not yet captured
+- RDRAM: not yet captured
 - mulmul - PASS
-- sra - FAIL  got=0x00000000_456789AB
-- mult - FAIL  got=0xFFFFFFFE_00000002
-- div - FAIL  got=0x2AAAAAB4_AAAAAAAB
+- sra    - FAIL  got=0x00000000_456789AB
+- mult   - FAIL  got=0xFFFFFFFE_00000002
+- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
 **iQue Player (hardware)**
 - PRId `0x00000B40`, FCR0 `0x00000B00`
+- MI_VERSION IO: not yet captured
+- RDRAM: not yet captured
 - mulmul - PASS
-- sra - FAIL  got=0x00000000_456789AB
-- mult - FAIL  got=0xFFFFFFFE_00000002
-- div - FAIL  got=0x2AAAAAB4_AAAAAAAB
+- sra    - FAIL  got=0x00000000_456789AB
+- mult   - FAIL  got=0xFFFFFFFE_00000002
+- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
 **ares v147-122-g0394fd90a**
 - mulmul - PASS
-- sra - FAIL  got=0x00000000_456789AB
-- mult - FAIL  got=0xFFFFFFFE_00000002
-- div - FAIL  got=0x2AAAAAB4_AAAAAAAB
+- sra    - FAIL  got=0x00000000_456789AB
+- mult   - FAIL  got=0xFFFFFFFE_00000002
+- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
 ---
 
