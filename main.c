@@ -22,14 +22,20 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <bit>
+#include <string.h>
 #include <libdragon.h>
 
 /* -------------------------------------------------------------------------
  * Helpers
  * ---------------------------------------------------------------------- */
 
-#define F32I(x) std::bit_cast<uint32_t>(x)
+/* Type-pun float -> uint32_t without UB. */
+static inline uint32_t f32_to_bits(float f) {
+    uint32_t b;
+    memcpy(&b, &f, sizeof b);
+    return b;
+}
+#define F32I(x) f32_to_bits(x)
 
 static inline bool is_denormal(float f) {
     uint32_t b = F32I(f);
@@ -57,9 +63,10 @@ typedef struct {
     uint64_t detail;
 } probe_result_t;
 
-static probe_result_t PASS(void)            { return { RESULT_PASS, 0 }; }
-static probe_result_t FAIL(uint64_t d = 0) { return { RESULT_FAIL, d }; }
-static probe_result_t STUB(void)            { return { RESULT_STUB, 0 }; }
+static probe_result_t PASS(void)         { return (probe_result_t){ RESULT_PASS, 0 }; }
+static probe_result_t FAIL(uint64_t d)   { return (probe_result_t){ RESULT_FAIL, d }; }
+static probe_result_t FAIL0(void)        { return (probe_result_t){ RESULT_FAIL, 0 }; }
+static probe_result_t STUB(void)         { return (probe_result_t){ RESULT_STUB, 0 }; }
 
 static const char *status_str(probe_status_t s) {
     switch (s) {
