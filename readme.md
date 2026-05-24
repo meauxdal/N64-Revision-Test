@@ -1,13 +1,5 @@
 ## n64-hardware-test
 
-Hardware revision characterization ROM for Nintendo 64.
-
-Boot it on real hardware (or MiSTer FPGA). Results print to the on-screen console and to USB/isviewer debug output simultaneously.
-
----
-
-### What it reports
-
 **Identifier registers**
 
 | Register | Field | Expected | Notes |
@@ -25,7 +17,7 @@ Boot it on real hardware (or MiSTer FPGA). Results print to the on-screen consol
 | `0x22` | 2.2 — later retail |
 | `0x40` | 4.0 — iQue Player |
 
-Not all board revisions have been tested. New values are expected.
+Not all board revisions have been tested.
 
 ---
 
@@ -67,4 +59,3 @@ The CI workflow builds automatically on push.
 ### References
 
 - [n64brew wiki — VR4300 bugs](https://n64brew.dev/wiki/VR4300)
-- [N64 Refresh Rate Reference](https://github.com/meauxdal/N64-Refresh-Rate-Reference)
