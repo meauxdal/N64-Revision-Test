@@ -44,13 +44,11 @@ static const char *status_str(probe_status_t s) {
 }
 
 /* -------------------------------------------------------------------------
- * Region read
+ * Region
+ *
+ * get_tv_type() returns __boot_tvtype, set by IPL from PIF boot info.
+ * This is the authoritative parsed region value.
  * ---------------------------------------------------------------------- */
-
-/* PIF ROM region byte set by bootstrap. 0=PAL, 1=NTSC, 2=MPAL */
-static uint8_t read_pif_region(void) {
-    return *((volatile uint8_t *)0xBFC007FC);
-}
 
 static const char *tv_type_str(int t) {
     switch (t) {
@@ -144,14 +142,12 @@ static probe_result_t probe_sra(void) {
      * Hardware produces 0x00000000456789AB
      * (upper 32 bits filled from upper word of input, new bit 31 = 0).
      *
-     * PASS = hardware behavior observed (expected on all known N64).
-     * FAIL with detail=1 = manual behavior (unexpected).
-     * FAIL with detail=result = something else entirely.
+     * PASS = manual behavior (bug absent).
+     * FAIL = hardware behavior observed (bug fires).
      */
     uint64_t result;
 
     __asm__ volatile (
-        /* Build 0x0123456789ABCDEF in $t0 */
         "lui    $t0, 0x0123\n"
         "dsll   $t0, $t0, 16\n"
         "ori    $t0, $t0, 0x4567\n"
@@ -159,17 +155,15 @@ static probe_result_t probe_sra(void) {
         "ori    $t0, $t0, 0x89AB\n"
         "dsll   $t0, $t0, 16\n"
         "ori    $t0, $t0, 0xCDEF\n"
-        /* sra by 16 */
         "sra    $t1, $t0, 16\n"
-        /* store full 64-bit result */
         "sd     $t1, %0\n"
         : "=m"(result)
         :
         : "$t0", "$t1"
     );
 
-    const uint64_t man_expected = 0xFFFFFFFFFFFF89ABULL;  /* bug absent */
-    const uint64_t hw_observed  = 0x00000000456789ABULL;  /* bug fires */
+    const uint64_t man_expected = 0xFFFFFFFFFFFF89ABULL;
+    const uint64_t hw_observed  = 0x00000000456789ABULL;
 
     if (result == man_expected) return PASS();
     if (result == hw_observed)  return FAIL(result);
@@ -190,23 +184,16 @@ static probe_result_t probe_mult(void) {
      * from bit 31, so the two interpretations produce different results.
      *
      * Input:
-     *   rs = 0x0000000000000002  (clean: +2)
-     *   rt_clean = 0x0000000000000001  (bit31=0, bit34=0 -> +1, result = 2)
-     *   rt_dirty = 0x0000000700000001  (bit31=0, bit34=1 -> treated as large
-     *                                   negative under 35-bit sign extension,
-     *                                   result should differ from 2)
+     *   rs = 2 (clean)
+     *   rt_clean = 1  (bit31=0, bit34=0 -> +1, result HI=0 LO=2)
+     *   rt_dirty = 0x0000000700000001  (bit31=0, bit34=1)
      *
-     * We run mult twice and compare HI:LO from each.
-     * PASS = both results match (bug not triggered or not present).
-     * FAIL = results differ (bug fires).
-     *
-     * NOTE: test vectors not yet validated on known-affected hardware.
-     * Detail word: high 32 = dirty HI, low 32 = dirty LO.
+     * PASS = clean and dirty results match (bug not triggered or not present).
+     * FAIL = results differ (bug fires). Detail = dirty HI:LO.
      */
     uint32_t hi_clean, lo_clean;
     uint32_t hi_dirty, lo_dirty;
 
-    /* Clean multiply: rs=2, rt=1, expect HI=0 LO=2 */
     __asm__ volatile (
         "li     $t0, 2\n"
         "li     $t1, 1\n"
@@ -218,7 +205,6 @@ static probe_result_t probe_mult(void) {
         : "$t0", "$t1", "hi", "lo"
     );
 
-    /* Dirty multiply: rs=2, rt has bit34 set but bit31 clear */
     __asm__ volatile (
         "li     $t0, 2\n"
         "lui    $t1, 0x0000\n"
@@ -264,12 +250,10 @@ static probe_result_t probe_div(void) {
      * FAIL = results differ (bug fires). Detail = dirty HI:LO.
      *
      * NOTE: exact expected output for the dirty case is not yet known.
-     * Test vectors not yet validated on known-affected hardware.
      */
     uint32_t hi_clean, lo_clean;
     uint32_t hi_dirty, lo_dirty;
 
-    /* Clean divide: 10 / 2 = 5 */
     __asm__ volatile (
         "li     $t0, 10\n"
         "li     $t1, 2\n"
@@ -281,10 +265,8 @@ static probe_result_t probe_div(void) {
         : "$t0", "$t1", "hi", "lo"
     );
 
-    /* Dirty divide: divisor has bit31=1, bit63=0 (anomalous case) */
     __asm__ volatile (
         "li     $t0, 10\n"
-        /* build 0x0000000080000002 in $t1 */
         "lui    $t1, 0x0000\n"
         "dsll   $t1, $t1, 16\n"
         "ori    $t1, $t1, 0x0000\n"
@@ -329,18 +311,15 @@ static const probe_entry_t probes[] = {
  * Reporting
  * ---------------------------------------------------------------------- */
 
-static void report(uint8_t pif_region, int tv_type,
-                   uint32_t prid, uint32_t fcr0)
+static void report(int tv_type, uint32_t prid, uint32_t fcr0)
 {
-    /* Run all probes once and cache results. */
     probe_result_t results[NUM_PROBES];
     for (size_t i = 0; i < NUM_PROBES; i++)
         results[i] = probes[i].fn();
 
-    /* Console output */
     printf("=== n64-hardware-test ===\n\n");
 
-    printf("PIF   0x%02X  %s\n\n", pif_region, tv_type_str(tv_type));
+    printf("region  %s\n\n", tv_type_str(tv_type));
 
     printf("PRId  0x%08lX\n", (unsigned long)prid);
     printf("  impl  0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
@@ -359,7 +338,6 @@ static void report(uint8_t pif_region, int tv_type,
         }
         printf("\n");
     }
-
 }
 
 /* -------------------------------------------------------------------------
@@ -374,12 +352,11 @@ int main(void) {
     console_set_render_mode(RENDER_MANUAL);
     console_clear();
 
-    uint8_t  pif_region = read_pif_region();
-    int      tv_type    = get_tv_type();
-    uint32_t prid       = read_prid();
-    uint32_t fcr0       = read_fcr0();
+    int      tv_type = get_tv_type();
+    uint32_t prid    = read_prid();
+    uint32_t fcr0    = read_fcr0();
 
-    report(pif_region, tv_type, prid, fcr0);
+    report(tv_type, prid, fcr0);
 
     console_render();
 
