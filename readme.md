@@ -38,13 +38,15 @@ Not all board revisions have been tested.
 | `mulmul` | FP double-multiply hazard (NaN/Zero/Inf operands) | FAIL (NUS-CPU-01, 02, some 03) / PASS (most units) |
 | `sra`    | 32-bit arithmetic right shift 64-bit state leak | FAIL (all units?) |
 | `mult`   | 32-bit signed multiply sign-extension anomaly | FAIL (all units?) |
-| `div`    | 32-bit signed divide sign-extension anomaly | testing |
+| `div`    | 32-bit signed divide sign-extension anomaly | FAIL (all units?) |
 
 STUB = wip
 
-ares v147:
+ares v147-122-g0394fd90a:
 - mulmul - PASS
 - sra    - FAIL
+- mult   - FAIL
+- div    - FAIL
 
 ---
 
