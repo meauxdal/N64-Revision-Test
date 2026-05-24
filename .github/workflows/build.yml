@@ -10,7 +10,7 @@ jobs:
 
     env:
       N64_INST: /n64_toolchain
-      LIBDRAGON_BRANCH: preview
+      LIBDRAGON_COMMIT: c60bfbfc2c44b86e3627b06640b0260b89788118
 
     steps:
       - uses: actions/checkout@v4
@@ -20,16 +20,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /n64_toolchain
-          key: libdragon-preview-${{ github.run_id }}
-          restore-keys: |
-            libdragon-preview-
+          key: libdragon-${{ env.LIBDRAGON_COMMIT }}
 
       - name: Build libdragon (preview)
         if: steps.cache-libdragon.outputs.cache-hit != 'true'
         run: |
-          git clone --depth=1 --branch preview \
-            https://github.com/DragonMinded/libdragon.git /tmp/libdragon
+          git clone --depth=1 https://github.com/DragonMinded/libdragon.git /tmp/libdragon
           cd /tmp/libdragon
+          git checkout $LIBDRAGON_COMMIT
           ./build.sh $N64_INST
 
       - name: Build ROM
