@@ -342,21 +342,22 @@ static void report(int tv_type, uint32_t pif_boot_word,
     for (size_t i = 0; i < NUM_PROBES; i++)
         results[i] = probes[i].fn();
 
-    printf("=== N64-Revision-Test ===\n\n");
+    printf("=== n64-revision-test ===\n\n");
 
-    printf("region  %s\n", tv_type_str(tv_type));
-    printf("  0xBFC007E4    0x%08lX\n", (unsigned long)pif_boot_word);
-    printf("  0xA4000009    0x%02X\n",  (unsigned)dmem_tvtype);
-    printf("  0xA400000B    0x%02X\n",  (unsigned)dmem_consoletype);
-    printf("  iQue          %s\n\n",    is_ique ? "yes" : "no");
+    printf("PIF\n");
+    printf("  0xBFC007E4             0x%08lX\n", (unsigned long)pif_boot_word);
+    printf("  0xA4000009             0x%02X\n",  (unsigned)dmem_tvtype);
+    printf("    tv_type  %s\n", tv_type_str(tv_type));
+    printf("  0xA400000B             0x%02X\n",  (unsigned)dmem_consoletype);
+    printf("    iQue     %s\n\n", is_ique ? "yes" : "no");
 
-    printf("PRId    0x%08lX\n", (unsigned long)prid);
-    printf("  implementation  0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
-    printf("  revision        0x%02X\n\n", (unsigned)(prid >> 0) & 0xFF);
+    printf("CP0 PRId     0x%08lX\n", (unsigned long)prid);
+    printf("  [15:8] processor ID    0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
+    printf("  [7:0]  revision        0x%02X\n\n", (unsigned)(prid >> 0) & 0xFF);
 
-    printf("FCR0    0x%08lX\n", (unsigned long)fcr0);
-    printf("  implementation  0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
-    printf("  revision        0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
+    printf("CP1 FCR0     0x%08lX\n", (unsigned long)fcr0);
+    printf("  [15:8] implementation  0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
+    printf("  [7:0]  revision        0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
 
     for (size_t i = 0; i < NUM_PROBES; i++) {
         printf("%-8s  %s", probes[i].tag, status_str(results[i].status));

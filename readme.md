@@ -12,7 +12,7 @@ libdragon function `get_tv_type()` via IPL boot info from PIF.
 
 | register | field  | label          | known values    | notes           |
 |----------|--------|----------------|-----------------|-----------------|
-| CP0 PRId | [15:8] | implementation | `0x0B`          | VR4300          |
+| CP0 PRId | [15:8] | processor ID   | `0x0B`          | VR4300          |
 | CP0 PRId | [7:0]  | revision       | varies          | see below       |
 | CP1 FCR0 | [15:8] | implementation | `0x0A` / `0x0B` | retail / iQue   |
 | CP1 FCR0 | [7:0]  | revision       | `0x00`          | all known units |

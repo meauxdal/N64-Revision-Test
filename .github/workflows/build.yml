@@ -36,5 +36,5 @@ jobs:
       - name: Upload ROM
         uses: actions/upload-artifact@v7
         with:
-          name: n64-hardware-test
-          path: n64_hardware_test.z64
+          name: n64-revision-test
+          path: n64_revision_test.z64
