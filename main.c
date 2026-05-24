@@ -3,20 +3,11 @@
  * Hardware revision characterization ROM for Nintendo 64.
  *
  * Reads processor and FPU revision identifiers, runs targeted bug probes,
- * and reports results to both the console OSD and USB/isviewer debug log.
- *
- * Probes implemented:
- *   [CPU] PRId  — VR4300 processor id and revision
- *   [FPU] FCR0  — FPU implementation and revision
- *   [BUG] mulmul — FP double-mul hazard (fixed in later steppings)
- *   [BUG] sra   — 32-bit arithmetic right-shift 64-bit state leak (stub)
- *   [BUG] mult  — 32-bit signed multiply sign-extension (stub)
- *   [BUG] div   — 32-bit signed divide sign-extension (stub)
+ * and reports raw results to both the console OSD and USB/isviewer debug log.
  *
  * Adding a new probe:
  *   1. Write a probe_*() function returning probe_result_t.
  *   2. Add an entry to the probes[] table in main().
- *   3. Add an interpret_*() entry if you have known mappings.
  */
 
 #include <stdio.h>
@@ -29,23 +20,12 @@
  * Helpers
  * ---------------------------------------------------------------------- */
 
-/* Type-pun float -> uint32_t without UB. */
 static inline uint32_t f32_to_bits(float f) {
     uint32_t b;
     memcpy(&b, &f, sizeof b);
     return b;
 }
 #define F32I(x) f32_to_bits(x)
-
-static inline bool is_denormal(float f) {
-    uint32_t b = F32I(f);
-    return ((b >> 23) & 0xFF) == 0 && (b & 0x7FFFFF) != 0;
-}
-
-static inline bool is_nan(float f) {
-    uint32_t b = F32I(f);
-    return ((b >> 23) & 0xFF) == 0xFF && (b & 0x7FFFFF) != 0;
-}
 
 /* -------------------------------------------------------------------------
  * Probe result type
@@ -54,19 +34,17 @@ static inline bool is_nan(float f) {
 typedef enum {
     RESULT_PASS,
     RESULT_FAIL,
-    RESULT_STUB,   /* probe scaffolded but asm not yet validated */
+    RESULT_STUB,
 } probe_status_t;
 
 typedef struct {
     probe_status_t status;
-    /* Optional extra detail word for logging; 0 if unused. */
-    uint64_t detail;
+    uint64_t detail;   /* optional; 0 if unused */
 } probe_result_t;
 
-static probe_result_t PASS(void)         { return (probe_result_t){ RESULT_PASS, 0 }; }
-static probe_result_t FAIL(uint64_t d)   { return (probe_result_t){ RESULT_FAIL, d }; }
-static probe_result_t FAIL0(void)        { return (probe_result_t){ RESULT_FAIL, 0 }; }
-static probe_result_t STUB(void)         { return (probe_result_t){ RESULT_STUB, 0 }; }
+static probe_result_t PASS(void)       { return (probe_result_t){ RESULT_PASS, 0 }; }
+static probe_result_t FAIL(uint64_t d) { return (probe_result_t){ RESULT_FAIL, d }; }
+static probe_result_t STUB(void)       { return (probe_result_t){ RESULT_STUB, 0 }; }
 
 static const char *status_str(probe_status_t s) {
     switch (s) {
@@ -94,128 +72,80 @@ static uint32_t read_fcr0(void) {
 }
 
 /* -------------------------------------------------------------------------
- * Identifier interpretation
- * ---------------------------------------------------------------------- */
-
-static const char *interpret_prid_rev(uint8_t rev) {
-    switch (rev) {
-        case 0x10: return "1.0 (early retail; mulmul affected)";
-        case 0x22: return "2.2 (later retail)";
-        case 0x40: return "4.0 (iQue Player)";
-        default:   return "unknown";
-    }
-}
-
-static const char *interpret_fcr0_rev(uint8_t rev) {
-    switch (rev) {
-        case 0x00: return "0x00 (all known retail + iQue)";
-        default:   return "unknown";
-    }
-}
-
-/* -------------------------------------------------------------------------
  * BUG: mulmul — FP double-multiply hazard
  *
- * A consecutive pair of mul.s instructions may produce incorrect results
- * for the second multiply when operands include NaN, Zero, or Infinity,
- * on early VR4300 steppings. A NOP between the two clears the hazard.
+ * Back-to-back mul.s may produce incorrect results for the second multiply
+ * when the first multiply's operands include sNaN, Zero, or Infinity.
+ * Affects VR4300 versions 1.x, 2.0, 2.1. Fixed in 2.2+.
+ * A single intervening instruction (e.g. NOP) clears the hazard.
  *
- * Probe: run a known-bad input pair with and without the intervening NOP
- * and compare results. PASS = no discrepancy (bug absent or not triggered).
- *
- * Known-bad class: (0 * inf) followed by any mul.s.
- * We use fixed inputs so the test is deterministic.
+ * Probe: compare results of the hazard sequence vs. the NOP-separated
+ * sequence on fixed inputs (0 * inf, 2 * 3). PASS = results match.
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_mulmul(void) {
     float broken, working;
-    const float a1 = 0.0f;
-    const float b1 = __builtin_inff();
-    const float a2 = 2.0f;
-    const float b2 = 3.0f;
+    const float zero = 0.0f;
+    const float inf  = __builtin_inff();
+    const float a    = 2.0f;
+    const float b    = 3.0f;
 
-    /* Mask FPU invalid-operation exception so that (0 * inf) -> QNaN
-       quietly rather than trapping. Restore FCR31 afterward. */
     uint32_t fcr31_saved = C1_FCR31();
     C1_WRITE_FCR31(fcr31_saved & ~(C1_ENABLE_OVERFLOW | C1_ENABLE_DIV_BY_0 | C1_ENABLE_INVALID_OP));
 
     __asm__ volatile (
-        "mul.s $f0, %2, %3\n"
-        "mul.s %0, %4, %5\n"
+        "mul.s $f0, %1, %2\n"
+        "mul.s %0, %3, %4\n"
         : "=f"(broken)
-        : "f"(a1), "f"(a1), "f"(b1), "f"(a2), "f"(b2)   /* dummy use of a1 */
+        : "f"(zero), "f"(inf), "f"(a), "f"(b)
         : "f0"
     );
-    /* Separate asm block prevents the compiler from merging or reordering
-       the two mul.s sequences. */
     __asm__ volatile (
-        "mul.s $f0, %2, %3\n"
+        "mul.s $f0, %1, %2\n"
         "nop\n"
-        "mul.s %0, %4, %5\n"
+        "mul.s %0, %3, %4\n"
         : "=f"(working)
-        : "f"(a1), "f"(a1), "f"(b1), "f"(a2), "f"(b2)
+        : "f"(zero), "f"(inf), "f"(a), "f"(b)
         : "f0"
     );
 
     C1_WRITE_FCR31(fcr31_saved);
 
     if (F32I(broken) != F32I(working))
-        return FAIL((uint64_t)F32I(broken) << 32 | F32I(working));
+        return FAIL((uint64_t)F32I(broken) << 32 | (uint64_t)F32I(working));
     return PASS();
 }
 
 /* -------------------------------------------------------------------------
  * BUG: sra — 32-bit arithmetic right shift leaks 64-bit state
  *
- * Per VR4300 manual: sra rd, rt, sa should sign-extend from bit 31 of the
- * lower 32 bits. In practice on all known N64 hardware, bits shifted in from
- * the top come from the *upper* 32 bits of the 64-bit register, and only the
- * *new* bit 31 is used for sign-extension into the upper word.
- *
- * Example: input 0x0123456789ABCDEF, sa=16
- *   Manual result:  0xFFFFFFFFFFFF89AB  (sign from original bit 31 = 1)
- *   Hardware result: 0x00000000456789AB  (sign from new bit 31 = 0)
- *
- * STUB: asm needs validation on hardware before promoting to PASS/FAIL.
+ * STUB: requires construction of 64-bit register state in inline asm.
+ * Deferred pending test vector validation on hardware.
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_sra(void) {
-    /* Load a 64-bit value into a register using DMTC1 as scratch,
-       then read it back via DMFC1 — or better, use integer registers
-       directly with 64-bit loads. This requires -mabi=64 or inline asm
-       that manually constructs the 64-bit value. Deferred pending asm
-       review. */
-    (void)0;
     return STUB();
 }
 
 /* -------------------------------------------------------------------------
- * BUG: mult — 32-bit signed multiply sign-extension
+ * BUG: mult — 32-bit signed multiply sign-extension anomaly
  *
- * mult is supposed to sign-extend both 32-bit operands to 64 bits before
- * multiplying. In practice the second operand is sign-extended only from
- * bit 34, not bit 31, making it a 64×35-bit multiply.
- *
- * STUB: characterization inputs need hardware validation.
+ * STUB: requires construction of non-sign-extended 64-bit input state.
+ * Deferred pending test vector validation on hardware.
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_mult(void) {
-    (void)0;
     return STUB();
 }
 
 /* -------------------------------------------------------------------------
- * BUG: div — 32-bit signed divide sign-extension
+ * BUG: div — 32-bit signed divide sign-extension anomaly
  *
- * Similar to mult, but with an additional anomalous case when bits 63 and
- * 31 of the divisor are not equal. Remainder behavior is at least consistent
- * with: remainder = (int32_t)(dividend - quotient * divisor).
- *
- * STUB: requires careful construction of 64-bit register state.
+ * STUB: requires construction of non-sign-extended 64-bit input state.
+ * Deferred pending test vector validation on hardware.
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_div(void) {
-    (void)0;
     return STUB();
 }
 
@@ -226,37 +156,15 @@ static probe_result_t probe_div(void) {
 typedef probe_result_t (*probe_fn_t)(void);
 
 typedef struct {
-    const char *tag;          /* printed label, e.g. "[BUG] mulmul" */
-    const char *pass_note;    /* brief note shown on PASS */
-    const char *fail_note;    /* brief note shown on FAIL */
+    const char *tag;
     probe_fn_t  fn;
 } probe_entry_t;
 
 static const probe_entry_t probes[] = {
-    {
-        "[BUG] mulmul",
-        "not present",
-        "FP hazard; early stepping",
-        probe_mulmul,
-    },
-    {
-        "[BUG] sra",
-        "manual behavior",
-        "64-bit state leak (expected on all N64)",
-        probe_sra,
-    },
-    {
-        "[BUG] mult",
-        "manual behavior",
-        "sign-ext anomaly (expected on all N64)",
-        probe_mult,
-    },
-    {
-        "[BUG] div",
-        "manual behavior",
-        "sign-ext anomaly (expected on all N64)",
-        probe_div,
-    },
+    { "mulmul", probe_mulmul },
+    { "sra",    probe_sra    },
+    { "mult",   probe_mult   },
+    { "div",    probe_div    },
 };
 
 #define NUM_PROBES (sizeof(probes) / sizeof(probes[0]))
@@ -273,66 +181,49 @@ int main(void) {
     console_set_render_mode(RENDER_MANUAL);
     console_clear();
 
-    /* -- Identifier reads ------------------------------------------------ */
-
     uint32_t prid = read_prid();
     uint32_t fcr0 = read_fcr0();
 
-    uint8_t cpu_impl = (prid >> 8) & 0xFF;
-    uint8_t cpu_rev  = (prid >> 0) & 0xFF;
-    uint8_t fpu_impl = (fcr0 >> 8) & 0xFF;
-    uint8_t fpu_rev  = (fcr0 >> 0) & 0xFF;
+    /* Console output */
+    printf("=== n64-hardware-test ===\n\n");
 
-    /* -- Console header -------------------------------------------------- */
+    printf("PRId  0x%08lX\n", (unsigned long)prid);
+    printf("  impl  0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
+    printf("  rev   0x%02X\n\n", (unsigned)(prid >> 0) & 0xFF);
 
-    printf("=== N64 hardware revision report ===\n\n");
-
-    printf("[CPU] PRId:  0x%08lX\n", (unsigned long)prid);
-    printf("      impl:  0x%02X (expect 0x0B)\n", cpu_impl);
-    printf("      rev:   0x%02X => %s\n", cpu_rev, interpret_prid_rev(cpu_rev));
-
-    printf("[FPU] FCR0:  0x%08lX\n", (unsigned long)fcr0);
-    printf("      impl:  0x%02X (expect 0x0B)\n", fpu_impl);
-    printf("      rev:   0x%02X => %s\n", fpu_rev, interpret_fcr0_rev(fpu_rev));
-
-    printf("\n");
-
-    /* -- Probes ---------------------------------------------------------- */
+    printf("FCR0  0x%08lX\n", (unsigned long)fcr0);
+    printf("  impl  0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
+    printf("  rev   0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
 
     for (size_t i = 0; i < NUM_PROBES; i++) {
         const probe_entry_t *p = &probes[i];
         probe_result_t r = p->fn();
-
-        const char *note = "";
-        if (r.status == RESULT_PASS) note = p->pass_note;
-        if (r.status == RESULT_FAIL) note = p->fail_note;
-
-        printf("%-16s %s  %s\n", p->tag, status_str(r.status), note);
-
+        printf("%-8s  %s", p->tag, status_str(r.status));
         if (r.status == RESULT_FAIL && r.detail != 0) {
-            printf("                 got=0x%08lX ref=0x%08lX\n",
+            printf("  got=0x%08lX  ref=0x%08lX",
                 (unsigned long)(r.detail >> 32),
                 (unsigned long)(r.detail & 0xFFFFFFFF));
         }
+        printf("\n");
     }
 
-    printf("\n");
-
-    /* -- Debug log (mirrors console output with more detail) ------------ */
-
-    debugf("=== N64 hardware revision report ===\n");
-    debugf("PRId=0x%08lX impl=0x%02X rev=0x%02X (%s)\n",
-        (unsigned long)prid, cpu_impl, cpu_rev, interpret_prid_rev(cpu_rev));
-    debugf("FCR0=0x%08lX impl=0x%02X rev=0x%02X (%s)\n",
-        (unsigned long)fcr0, fpu_impl, fpu_rev, interpret_fcr0_rev(fpu_rev));
+    /* Debug log */
+    debugf("=== n64-hardware-test ===\n");
+    debugf("PRId=0x%08lX impl=0x%02X rev=0x%02X\n",
+        (unsigned long)prid,
+        (unsigned)(prid >> 8) & 0xFF,
+        (unsigned)(prid >> 0) & 0xFF);
+    debugf("FCR0=0x%08lX impl=0x%02X rev=0x%02X\n",
+        (unsigned long)fcr0,
+        (unsigned)(fcr0 >> 8) & 0xFF,
+        (unsigned)(fcr0 >> 0) & 0xFF);
 
     for (size_t i = 0; i < NUM_PROBES; i++) {
         const probe_entry_t *p = &probes[i];
-        probe_result_t r = p->fn();  /* run again for log — probes must be pure */
-        const char *note = (r.status == RESULT_FAIL) ? p->fail_note : p->pass_note;
-        debugf("%s: %s  %s", p->tag, status_str(r.status), note);
+        probe_result_t r = p->fn();
+        debugf("%s: %s", p->tag, status_str(r.status));
         if (r.status == RESULT_FAIL && r.detail != 0) {
-            debugf("  [got=0x%08lX ref=0x%08lX]",
+            debugf("  got=0x%08lX ref=0x%08lX",
                 (unsigned long)(r.detail >> 32),
                 (unsigned long)(r.detail & 0xFFFFFFFF));
         }
@@ -341,6 +232,5 @@ int main(void) {
 
     console_render();
 
-    /* Hold forever — this is a reporting ROM, not a game. */
     while (1) {}
 }
