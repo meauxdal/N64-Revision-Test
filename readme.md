@@ -35,12 +35,16 @@ Not all board revisions have been tested.
 
 | Probe | What it tests | Expected |
 |-------|--------------|------------------------|
-| `mulmul` | FP double-multiply hazard (NaN/Zero/Inf operands) | FAIL (early units) / PASS |
-| `sra`    | 32-bit arithmetic right shift 64-bit state leak | STUB |
+| `mulmul` | FP double-multiply hazard (NaN/Zero/Inf operands) | FAIL (NUS-CPU-01, 02, some 03) / PASS (most units) |
+| `sra`    | 32-bit arithmetic right shift 64-bit state leak | FAIL (all units?) |
 | `mult`   | 32-bit signed multiply sign-extension anomaly | STUB |
 | `div`    | 32-bit signed divide sign-extension anomaly | STUB |
 
 STUB = wip pending help from n64brew folks.
+
+ares v147:
+- mulmul - PASS
+- sra    - FAIL
 
 ---
 
