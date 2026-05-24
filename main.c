@@ -345,8 +345,8 @@ static void report(int tv_type, uint32_t pif_boot_word,
     printf("=== n64-revision-test ===\n\n");
 
     printf("libdragon\n");
-    printf("  tv_type (region)     %s\n", tv_type_str(tv_type));
-    printf("  sys_bbplayer (iQue)  %s\n\n", is_ique ? "yes" : "no");
+    printf("  region  get_tv_type()   %s\n", tv_type_str(tv_type));
+    printf("  iQue    sys_bbplayer()  %s\n\n", is_ique ? "yes" : "no");
 
     printf("PIF\n");
     printf("  boot word     0xBFC007E4  0x%08lX\n", (unsigned long)pif_boot_word);
@@ -354,12 +354,12 @@ static void report(int tv_type, uint32_t pif_boot_word,
     printf("  console type  0xA400000B  0x%02X\n",  (unsigned)dmem_consoletype);
 
     printf("CP0 PRId  0x%08lX\n", (unsigned long)prid);
-    printf("  [15:8] ID        0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
-    printf("  [7:0]  revision  0x%02X\n\n", (unsigned)(prid >> 0) & 0xFF);
+    printf("  [15:8]  ID        0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
+    printf("  [7:0]   revision  0x%02X\n\n", (unsigned)(prid >> 0) & 0xFF);
 
     printf("CP1 FCR0  0x%08lX\n", (unsigned long)fcr0);
-    printf("  [15:8] implementation  0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
-    printf("  [7:0]  revision        0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
+    printf("  [15:8]  implementation  0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
+    printf("  [7:0]   revision        0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
 
     for (size_t i = 0; i < NUM_PROBES; i++) {
         printf(
