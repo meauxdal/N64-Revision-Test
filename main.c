@@ -220,16 +220,11 @@ static probe_result_t probe_mult(void) {
 
     /* Clean multiply: rs=2, rt=1, expect HI=0 LO=2 */
     __asm__ volatile (
-        "li     $t0, 2
-"
-        "li     $t1, 1
-"
-        "mult   $t0, $t1
-"
-        "mfhi   %0
-"
-        "mflo   %1
-"
+        "li     $t0, 2\n"
+        "li     $t1, 1\n"
+        "mult   $t0, $t1\n"
+        "mfhi   %0\n"
+        "mflo   %1\n"
         : "=r"(hi_clean), "=r"(lo_clean)
         :
         : "$t0", "$t1", "hi", "lo"
@@ -237,29 +232,17 @@ static probe_result_t probe_mult(void) {
 
     /* Dirty multiply: rs=2, rt has bit34 set but bit31 clear */
     __asm__ volatile (
-        "li     $t0, 2
-"
-        /* build 0x0000000700000001 in $t1 */
-        "lui    $t1, 0x0000
-"
-        "dsll   $t1, $t1, 16
-"
-        "ori    $t1, $t1, 0x0007
-"
-        "dsll   $t1, $t1, 16
-"
-        "ori    $t1, $t1, 0x0000
-"
-        "dsll   $t1, $t1, 16
-"
-        "ori    $t1, $t1, 0x0001
-"
-        "mult   $t0, $t1
-"
-        "mfhi   %0
-"
-        "mflo   %1
-"
+        "li     $t0, 2\n"
+        "lui    $t1, 0x0000\n"
+        "dsll   $t1, $t1, 16\n"
+        "ori    $t1, $t1, 0x0007\n"
+        "dsll   $t1, $t1, 16\n"
+        "ori    $t1, $t1, 0x0000\n"
+        "dsll   $t1, $t1, 16\n"
+        "ori    $t1, $t1, 0x0001\n"
+        "mult   $t0, $t1\n"
+        "mfhi   %0\n"
+        "mflo   %1\n"
         : "=r"(hi_dirty), "=r"(lo_dirty)
         :
         : "$t0", "$t1", "hi", "lo"
