@@ -54,8 +54,6 @@ reminders for new probes:
 2. Add an entry to the `probes[]` table in `main()`.
 3. If you have known revision↔result mappings, add an `interpret_foo()` helper.
 
-Probes are run twice: once for the OSD and once for the debug log.
-
 ---
 
 using libdragon preview branch

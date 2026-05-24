@@ -193,7 +193,81 @@ static probe_result_t probe_sra(void) {
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_mult(void) {
-    return STUB();
+    /*
+     * The bug: mult is supposed to sign-extend both 32-bit operands to 64
+     * bits before multiplying (sign from bit 31). In practice the second
+     * operand is sign-extended from bit 34, making it a 64x35-bit multiply.
+     *
+     * To expose this, we construct a second operand where bit 34 differs
+     * from bit 31, so the two interpretations produce different results.
+     *
+     * Input:
+     *   rs = 0x0000000000000002  (clean: +2)
+     *   rt_clean = 0x0000000000000001  (bit31=0, bit34=0 -> +1, result = 2)
+     *   rt_dirty = 0x0000000700000001  (bit31=0, bit34=1 -> treated as large
+     *                                   negative under 35-bit sign extension,
+     *                                   result should differ from 2)
+     *
+     * We run mult twice and compare HI:LO from each.
+     * PASS = both results match (bug not triggered or not present).
+     * FAIL = results differ (bug fires).
+     *
+     * NOTE: test vectors not yet validated on known-affected hardware.
+     * Detail word: high 32 = dirty HI, low 32 = dirty LO.
+     */
+    uint32_t hi_clean, lo_clean;
+    uint32_t hi_dirty, lo_dirty;
+
+    /* Clean multiply: rs=2, rt=1, expect HI=0 LO=2 */
+    __asm__ volatile (
+        "li     $t0, 2
+"
+        "li     $t1, 1
+"
+        "mult   $t0, $t1
+"
+        "mfhi   %0
+"
+        "mflo   %1
+"
+        : "=r"(hi_clean), "=r"(lo_clean)
+        :
+        : "$t0", "$t1", "hi", "lo"
+    );
+
+    /* Dirty multiply: rs=2, rt has bit34 set but bit31 clear */
+    __asm__ volatile (
+        "li     $t0, 2
+"
+        /* build 0x0000000700000001 in $t1 */
+        "lui    $t1, 0x0000
+"
+        "dsll   $t1, $t1, 16
+"
+        "ori    $t1, $t1, 0x0007
+"
+        "dsll   $t1, $t1, 16
+"
+        "ori    $t1, $t1, 0x0000
+"
+        "dsll   $t1, $t1, 16
+"
+        "ori    $t1, $t1, 0x0001
+"
+        "mult   $t0, $t1
+"
+        "mfhi   %0
+"
+        "mflo   %1
+"
+        : "=r"(hi_dirty), "=r"(lo_dirty)
+        :
+        : "$t0", "$t1", "hi", "lo"
+    );
+
+    if (hi_clean != hi_dirty || lo_clean != lo_dirty)
+        return FAIL((uint64_t)hi_dirty << 32 | (uint64_t)lo_dirty);
+    return PASS();
 }
 
 /* -------------------------------------------------------------------------
