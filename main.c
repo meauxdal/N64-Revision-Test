@@ -261,7 +261,63 @@ static probe_result_t probe_mult(void) {
  * ---------------------------------------------------------------------- */
 
 static probe_result_t probe_div(void) {
-    return STUB();
+    /*
+     * The bug: div sign-extends the divisor from bit 34 rather than bit 31.
+     * Additionally, when bits 63 and 31 of the divisor are not equal, the
+     * quotient in LO is wrong in a way that is not fully understood.
+     * The remainder in HI is at least consistent with:
+     *   remainder = (int32_t)(dividend - quotient * divisor)
+     *
+     * We target the anomalous case: bit 63 = 0, bit 31 = 1 in the divisor.
+     *
+     * Inputs:
+     *   dividend = 10 (clean)
+     *   divisor_clean = 2  -> expect LO=5, HI=0
+     *   divisor_dirty = 0x0000000080000002 (bit31=1, bit63=0)
+     *
+     * PASS = clean and dirty results match (bug not triggered or not present).
+     * FAIL = results differ (bug fires). Detail = dirty HI:LO.
+     *
+     * NOTE: exact expected output for the dirty case is not yet known.
+     * Test vectors not yet validated on known-affected hardware.
+     */
+    uint32_t hi_clean, lo_clean;
+    uint32_t hi_dirty, lo_dirty;
+
+    /* Clean divide: 10 / 2 = 5 */
+    __asm__ volatile (
+        "li     $t0, 10\n"
+        "li     $t1, 2\n"
+        "div    $t0, $t1\n"
+        "mfhi   %0\n"
+        "mflo   %1\n"
+        : "=r"(hi_clean), "=r"(lo_clean)
+        :
+        : "$t0", "$t1", "hi", "lo"
+    );
+
+    /* Dirty divide: divisor has bit31=1, bit63=0 (anomalous case) */
+    __asm__ volatile (
+        "li     $t0, 10\n"
+        /* build 0x0000000080000002 in $t1 */
+        "lui    $t1, 0x0000\n"
+        "dsll   $t1, $t1, 16\n"
+        "ori    $t1, $t1, 0x0000\n"
+        "dsll   $t1, $t1, 16\n"
+        "ori    $t1, $t1, 0x8000\n"
+        "dsll   $t1, $t1, 16\n"
+        "ori    $t1, $t1, 0x0002\n"
+        "div    $t0, $t1\n"
+        "mfhi   %0\n"
+        "mflo   %1\n"
+        : "=r"(hi_dirty), "=r"(lo_dirty)
+        :
+        : "$t0", "$t1", "hi", "lo"
+    );
+
+    if (hi_clean != hi_dirty || lo_clean != lo_dirty)
+        return FAIL((uint64_t)hi_dirty << 32 | (uint64_t)lo_dirty);
+    return PASS();
 }
 
 /* -------------------------------------------------------------------------
