@@ -361,7 +361,7 @@ static void report(int tv_type, uint32_t pif_boot_word,
     printf("  [15:8] implementation     0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
 
-    printf("hardware bugs\n");
+    printf("hw bugs\n");
     for (size_t i = 0; i < NUM_PROBES; i++) {
         printf("  %-8s  %s", probes[i].tag, status_str(results[i].status));
         if (results[i].status == RESULT_FAIL && results[i].detail != 0) {
