@@ -93,6 +93,78 @@ static uint32_t read_fcr0(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * MI_VERSION
+ *
+ * 0xA4300004. Bits [7:0] = IO version.
+ * 0x02 = retail RCP, 0x03 = Analogue 3D.
+ * ---------------------------------------------------------------------- */
+
+static uint32_t read_mi_version(void) {
+    return *((volatile uint32_t *)0xA4300004);
+}
+
+/* -------------------------------------------------------------------------
+ * RDRAM manufacturer
+ *
+ * RDRAM_REG_DEVICE_MANUFACTURER (reg 9) at chip 0.
+ * Base: 0xA3F00000, stride shift 8 (RI v2), reg 9 is odd so MI upper
+ * mode is required to access it (shifts 32-bit transfer to upper bus half).
+ *
+ * Address: 0xA3F00000 + (0 << 8 + 9) * 4 = 0xA3F00024
+ *
+ * Registers are physically little-endian; byteswap after reading.
+ * bits [31:16] = manufacturer code, bits [15:0] = product code.
+ *
+ * Known manufacturer codes:
+ *   0x0002 Toshiba   0x0003 Fujitsu   0x0005 NEC
+ *   0x0007 Hitachi   0x0009 OKI       0x000A LG
+ *   0x0010 Samsung   0x0013 Hyundai
+ * ---------------------------------------------------------------------- */
+
+#define MI_MODE_REG         ((volatile uint32_t *)0xA4300000)
+#define MI_WMODE_SET_UPPER  0x00002000
+#define MI_WMODE_CLR_UPPER  0x00001000
+#define RDRAM_REGS          ((volatile uint32_t *)0xA3F00000)
+
+static inline uint32_t byteswap32(uint32_t v) {
+    return ((v & 0xFF000000) >> 24) |
+           ((v & 0x00FF0000) >>  8) |
+           ((v & 0x0000FF00) <<  8) |
+           ((v & 0x000000FF) << 24);
+}
+
+typedef struct {
+    uint16_t manu;
+    uint16_t code;
+} rdram_manufacturer_t;
+
+static const char *rdram_manu_str(uint16_t manu) {
+    switch (manu) {
+        case 0x0002: return "Toshiba";
+        case 0x0003: return "Fujitsu";
+        case 0x0005: return "NEC";
+        case 0x0007: return "Hitachi";
+        case 0x0009: return "OKI";
+        case 0x000A: return "LG";
+        case 0x0010: return "Samsung";
+        case 0x0013: return "Hyundai";
+        default:     return "unknown";
+    }
+}
+
+static rdram_manufacturer_t read_rdram_manufacturer(int chip_id) {
+    /* reg 9 is odd: set MI upper mode before read, clear after */
+    *MI_MODE_REG = MI_WMODE_SET_UPPER;
+    uint32_t raw = RDRAM_REGS[(chip_id << 8) + 9];
+    *MI_MODE_REG = MI_WMODE_CLR_UPPER;
+    uint32_t value = byteswap32(raw);
+    return (rdram_manufacturer_t){
+        .manu = (value >> 16) & 0xFFFF,
+        .code = (value >>  0) & 0xFFFF,
+    };
+}
+
+/* -------------------------------------------------------------------------
  * BUG: mulmul — FP double-multiply hazard
  *
  * Back-to-back mul.s may produce incorrect results for the second multiply
@@ -271,8 +343,6 @@ static probe_result_t probe_div(void) {
      *
      * PASS = clean and dirty results match (bug not triggered or not present).
      * FAIL = results differ (bug fires). Detail = dirty HI:LO.
-     *
-     * NOTE: exact expected output for the dirty case is not yet known.
      */
     uint32_t hi_clean, lo_clean;
     uint32_t hi_dirty, lo_dirty;
@@ -336,7 +406,9 @@ static const probe_entry_t probes[] = {
 
 static void report(int tv_type, uint32_t pif_boot_word,
                    uint8_t dmem_tvtype, uint8_t dmem_consoletype,
-                   uint32_t prid, uint32_t fcr0, bool is_ique)
+                   uint32_t prid, uint32_t fcr0, bool is_ique,
+                   uint32_t mi_version,
+                   rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1)
 {
     probe_result_t results[NUM_PROBES];
     for (size_t i = 0; i < NUM_PROBES; i++)
@@ -360,6 +432,15 @@ static void report(int tv_type, uint32_t pif_boot_word,
     printf("CP1 FCR0  0x%08lX\n", (unsigned long)fcr0);
     printf("  [15:8] implementation     0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
+
+    printf("MI_VERSION      0x%08lX\n", (unsigned long)mi_version);
+    printf("  IO version    0x%02X\n\n", (unsigned)(mi_version & 0xFF));
+
+    printf("RDRAM\n");
+    printf("  chip 0  mfr=0x%04X (%s)  code=0x%04X\n",
+        rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
+    printf("  chip 2  mfr=0x%04X (%s)  code=0x%04X\n\n",
+        rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
 
     printf("hw bugs\n");
     for (size_t i = 0; i < NUM_PROBES; i++) {
@@ -392,9 +473,12 @@ int main(void) {
     uint32_t prid             = read_prid();
     uint32_t fcr0             = read_fcr0();
     bool     is_ique          = sys_bbplayer();
+    uint32_t mi_version       = read_mi_version();
+    rdram_manufacturer_t rdram0 = read_rdram_manufacturer(0);
+    rdram_manufacturer_t rdram1 = read_rdram_manufacturer(2);
 
     report(tv_type, pif_boot_word, dmem_tvtype, dmem_consoletype,
-           prid, fcr0, is_ique);
+           prid, fcr0, is_ique, mi_version, rdram0, rdram1);
 
     console_render();
 
