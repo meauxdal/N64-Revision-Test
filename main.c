@@ -342,14 +342,14 @@ static void report(int tv_type, uint32_t pif_boot_word,
     for (size_t i = 0; i < NUM_PROBES; i++)
         results[i] = probes[i].fn();
 
-    printf("=== n64-revision-test ===\n\n");
+    printf("=== n64-revision-test ===\n");
 
     printf("libdragon\n");
     printf("  region  get_tv_type()     %s\n", tv_type_str(tv_type));
     printf("  iQue    sys_bbplayer()    %s\n\n", is_ique ? "yes" : "no");
 
     printf("PIF\n");
-    printf("  boot word     0xBFC007E4  0x%08lX\n", (unsigned long)pif_boot_word);
+//    printf("  boot word     0xBFC007E4  0x%08lX\n", (unsigned long)pif_boot_word); // cleared before we read it, so not useful)
     printf("  tv type       0xA4000009  0x%02X\n",  (unsigned)dmem_tvtype);
     printf("  console type  0xA400000B  0x%02X\n\n",  (unsigned)dmem_consoletype);
 
