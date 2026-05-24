@@ -1,6 +1,6 @@
 [![Build N64 ROM](https://github.com/meauxdal/N64-Revision-Test/actions/workflows/build.yml/badge.svg)](https://github.com/meauxdal/N64-Revision-Test/actions/workflows/build.yml)
 
-## n64-hardware-test
+## n64-revision-test
 
 **region**
 

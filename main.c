@@ -44,18 +44,27 @@ static const char *status_str(probe_status_t s) {
 }
 
 /* -------------------------------------------------------------------------
- * Region
+ * Region / console type
  *
- * get_tv_type() returns __boot_tvtype, set by IPL from PIF boot info.
- * This is the authoritative parsed region value.
+ * libdragon reads these from RSP DMEM at boot (crt0.S):
+ *   0xA4000009 -> __boot_tvtype      -> get_tv_type()
+ *   0xA400000A -> __boot_resettype
+ *   0xA400000B -> __boot_consoletype -> sys_bbplayer()
  *
- * 0xBFC007E4 is the PIF-RAM word containing boot info written by IPL2,
- * including region and CIC seeds. Raw encoding is not fully documented;
- * reported here for cross-unit comparison.
+ * 0xBFC007E4 is the PIF-RAM boot info word written by IPL2,
+ * source of the above values before libdragon parses them.
  * ---------------------------------------------------------------------- */
 
 static uint32_t read_pif_boot_word(void) {
     return *((volatile uint32_t *)0xBFC007E4);
+}
+
+static uint8_t read_dmem_tvtype(void) {
+    return *((volatile uint8_t *)0xA4000009);
+}
+
+static uint8_t read_dmem_consoletype(void) {
+    return *((volatile uint8_t *)0xA400000B);
 }
 
 static const char *tv_type_str(int t) {
@@ -95,10 +104,6 @@ static uint32_t read_fcr0(void) {
  * sequence on fixed inputs (0 * inf, 2 * 3). PASS = results match.
  * ---------------------------------------------------------------------- */
 
-/* All four operands are function parameters so the compiler has already
-   loaded them into FP registers before either asm block executes.
-   This prevents any compiler-generated loads from slipping between
-   the two mul.s instructions. Pattern from HailToDodongo/ctest.cpp. */
 static probe_result_t probe_mulmul(void) {
     /*
      * Single asm block containing both sequences so the compiler cannot
@@ -121,7 +126,6 @@ static probe_result_t probe_mulmul(void) {
     C1_WRITE_FCR31(fcr31_saved & ~(C1_ENABLE_OVERFLOW | C1_ENABLE_DIV_BY_0 | C1_ENABLE_INVALID_OP));
 
     __asm__ volatile (
-        /* load operands into FP registers via integer bit patterns */
         "mtc1   %2, $f12\n"
         "mtc1   %3, $f13\n"
         "mtc1   %4, $f14\n"
@@ -331,24 +335,28 @@ static const probe_entry_t probes[] = {
  * ---------------------------------------------------------------------- */
 
 static void report(int tv_type, uint32_t pif_boot_word,
-                   uint32_t prid, uint32_t fcr0)
+                   uint8_t dmem_tvtype, uint8_t dmem_consoletype,
+                   uint32_t prid, uint32_t fcr0, bool is_ique)
 {
     probe_result_t results[NUM_PROBES];
     for (size_t i = 0; i < NUM_PROBES; i++)
         results[i] = probes[i].fn();
 
-    printf("=== n64-hardware-test ===\n\n");
+    printf("=== N64-Revision-Test ===\n\n");
 
     printf("region  %s\n", tv_type_str(tv_type));
-    printf("  PIF boot word  0x%08lX\n\n", (unsigned long)pif_boot_word);
+    printf("  0xBFC007E4    0x%08lX\n", (unsigned long)pif_boot_word);
+    printf("  0xA4000009    0x%02X\n",  (unsigned)dmem_tvtype);
+    printf("  0xA400000B    0x%02X\n",  (unsigned)dmem_consoletype);
+    printf("  iQue          %s\n\n",    is_ique ? "yes" : "no");
 
-    printf("PRId  0x%08lX\n", (unsigned long)prid);
-    printf("  impl  0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
-    printf("  rev   0x%02X\n\n", (unsigned)(prid >> 0) & 0xFF);
+    printf("PRId    0x%08lX\n", (unsigned long)prid);
+    printf("  implementation  0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
+    printf("  revision        0x%02X\n\n", (unsigned)(prid >> 0) & 0xFF);
 
-    printf("FCR0  0x%08lX\n", (unsigned long)fcr0);
-    printf("  impl  0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
-    printf("  rev   0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
+    printf("FCR0    0x%08lX\n", (unsigned long)fcr0);
+    printf("  implementation  0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
+    printf("  revision        0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
 
     for (size_t i = 0; i < NUM_PROBES; i++) {
         printf("%-8s  %s", probes[i].tag, status_str(results[i].status));
@@ -373,12 +381,16 @@ int main(void) {
     console_set_render_mode(RENDER_MANUAL);
     console_clear();
 
-    int      tv_type       = get_tv_type();
-    uint32_t pif_boot_word = read_pif_boot_word();
-    uint32_t prid          = read_prid();
-    uint32_t fcr0          = read_fcr0();
+    int      tv_type          = get_tv_type();
+    uint32_t pif_boot_word    = read_pif_boot_word();
+    uint8_t  dmem_tvtype      = read_dmem_tvtype();
+    uint8_t  dmem_consoletype = read_dmem_consoletype();
+    uint32_t prid             = read_prid();
+    uint32_t fcr0             = read_fcr0();
+    bool     is_ique          = sys_bbplayer();
 
-    report(tv_type, pif_boot_word, prid, fcr0);
+    report(tv_type, pif_boot_word, dmem_tvtype, dmem_consoletype,
+           prid, fcr0, is_ique);
 
     console_render();
 
