@@ -48,7 +48,15 @@ static const char *status_str(probe_status_t s) {
  *
  * get_tv_type() returns __boot_tvtype, set by IPL from PIF boot info.
  * This is the authoritative parsed region value.
+ *
+ * 0xBFC007E4 is the PIF-RAM word containing boot info written by IPL2,
+ * including region and CIC seeds. Raw encoding is not fully documented;
+ * reported here for cross-unit comparison.
  * ---------------------------------------------------------------------- */
+
+static uint32_t read_pif_boot_word(void) {
+    return *((volatile uint32_t *)0xBFC007E4);
+}
 
 static const char *tv_type_str(int t) {
     switch (t) {
@@ -91,40 +99,51 @@ static uint32_t read_fcr0(void) {
    loaded them into FP registers before either asm block executes.
    This prevents any compiler-generated loads from slipping between
    the two mul.s instructions. Pattern from HailToDodongo/ctest.cpp. */
-typedef struct { float broken; float working; } mulmul_result_t;
-
-static mulmul_result_t mulmul_test(float a1, float b1, float a2, float b2) {
-    mulmul_result_t res;
-    __asm__ volatile (
-        "mul.s $f0, %1, %2\n"
-        "mul.s $f1, %3, %4\n"
-        "mov.s %0, $f1\n"
-        : "=f"(res.broken)
-        : "f"(a1), "f"(b1), "f"(a2), "f"(b2)
-        : "f0", "f1"
-    );
-    __asm__ volatile (
-        "mul.s $f0, %1, %2\n"
-        "nop\n"
-        "mul.s $f1, %3, %4\n"
-        "mov.s %0, $f1\n"
-        : "=f"(res.working)
-        : "f"(a1), "f"(b1), "f"(a2), "f"(b2)
-        : "f0", "f1"
-    );
-    return res;
-}
-
 static probe_result_t probe_mulmul(void) {
+    /*
+     * Single asm block containing both sequences so the compiler cannot
+     * insert anything between the two mul.s instructions.
+     * Operands loaded explicitly via mtc1 from integer bit patterns.
+     *
+     * Broken:  mul.s (0*inf), mul.s (2*3) back-to-back
+     * Working: mul.s (0*inf), nop, mul.s (2*3)
+     *
+     * PASS = results match (bug absent).
+     * FAIL = results differ (bug fires). Detail = broken:working.
+     */
+    uint32_t bits_zero = 0x00000000UL;          /* 0.0f */
+    uint32_t bits_inf  = 0x7F800000UL;          /* +inf */
+    uint32_t bits_two  = 0x40000000UL;          /* 2.0f */
+    uint32_t bits_thr  = 0x40400000UL;          /* 3.0f */
+    uint32_t broken, working;
+
     uint32_t fcr31_saved = C1_FCR31();
     C1_WRITE_FCR31(fcr31_saved & ~(C1_ENABLE_OVERFLOW | C1_ENABLE_DIV_BY_0 | C1_ENABLE_INVALID_OP));
 
-    mulmul_result_t r = mulmul_test(0.0f, __builtin_inff(), 2.0f, 3.0f);
+    __asm__ volatile (
+        /* load operands into FP registers via integer bit patterns */
+        "mtc1   %2, $f12\n"
+        "mtc1   %3, $f13\n"
+        "mtc1   %4, $f14\n"
+        "mtc1   %5, $f15\n"
+        /* broken: back-to-back mul.s */
+        "mul.s  $f0, $f12, $f13\n"
+        "mul.s  $f1, $f14, $f15\n"
+        "mfc1   %0, $f1\n"
+        /* working: nop between mul.s */
+        "mul.s  $f0, $f12, $f13\n"
+        "nop\n"
+        "mul.s  $f1, $f14, $f15\n"
+        "mfc1   %1, $f1\n"
+        : "=r"(broken), "=r"(working)
+        : "r"(bits_zero), "r"(bits_inf), "r"(bits_two), "r"(bits_thr)
+        : "$f0", "$f1", "$f12", "$f13", "$f14", "$f15"
+    );
 
     C1_WRITE_FCR31(fcr31_saved);
 
-    if (F32I(r.broken) != F32I(r.working))
-        return FAIL((uint64_t)F32I(r.broken) << 32 | (uint64_t)F32I(r.working));
+    if (broken != working)
+        return FAIL((uint64_t)broken << 32 | (uint64_t)working);
     return PASS();
 }
 
@@ -311,7 +330,8 @@ static const probe_entry_t probes[] = {
  * Reporting
  * ---------------------------------------------------------------------- */
 
-static void report(int tv_type, uint32_t prid, uint32_t fcr0)
+static void report(int tv_type, uint32_t pif_boot_word,
+                   uint32_t prid, uint32_t fcr0)
 {
     probe_result_t results[NUM_PROBES];
     for (size_t i = 0; i < NUM_PROBES; i++)
@@ -319,7 +339,8 @@ static void report(int tv_type, uint32_t prid, uint32_t fcr0)
 
     printf("=== n64-hardware-test ===\n\n");
 
-    printf("region  %s\n\n", tv_type_str(tv_type));
+    printf("region  %s\n", tv_type_str(tv_type));
+    printf("  PIF boot word  0x%08lX\n\n", (unsigned long)pif_boot_word);
 
     printf("PRId  0x%08lX\n", (unsigned long)prid);
     printf("  impl  0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
@@ -352,11 +373,12 @@ int main(void) {
     console_set_render_mode(RENDER_MANUAL);
     console_clear();
 
-    int      tv_type = get_tv_type();
-    uint32_t prid    = read_prid();
-    uint32_t fcr0    = read_fcr0();
+    int      tv_type       = get_tv_type();
+    uint32_t pif_boot_word = read_pif_boot_word();
+    uint32_t prid          = read_prid();
+    uint32_t fcr0          = read_fcr0();
 
-    report(tv_type, prid, fcr0);
+    report(tv_type, pif_boot_word, prid, fcr0);
 
     console_render();
 
