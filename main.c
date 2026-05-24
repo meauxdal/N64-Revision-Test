@@ -375,27 +375,7 @@ static void report(uint8_t pif_region, int tv_type,
         printf("\n");
     }
 
-    /* Debug log */
-    debugf("=== n64-hardware-test ===\n");
-    debugf("PIF=0x%02X %s\n", pif_region, tv_type_str(tv_type));
-    debugf("PRId=0x%08lX impl=0x%02X rev=0x%02X\n",
-        (unsigned long)prid,
-        (unsigned)(prid >> 8) & 0xFF,
-        (unsigned)(prid >> 0) & 0xFF);
-    debugf("FCR0=0x%08lX impl=0x%02X rev=0x%02X\n",
-        (unsigned long)fcr0,
-        (unsigned)(fcr0 >> 8) & 0xFF,
-        (unsigned)(fcr0 >> 0) & 0xFF);
-
-    for (size_t i = 0; i < NUM_PROBES; i++) {
-        debugf("%s: %s", probes[i].tag, status_str(results[i].status));
-        if (results[i].status == RESULT_FAIL && results[i].detail != 0) {
-            debugf("  got=0x%08lX_%08lX",
-                (unsigned long)(results[i].detail >> 32),
-                (unsigned long)(results[i].detail & 0xFFFFFFFF));
-        }
-        debugf("\n");
-    }
+    /* printf is redirected to USB by debug_init_usblog() - no separate debugf needed */
 }
 
 /* -------------------------------------------------------------------------
