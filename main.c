@@ -134,6 +134,11 @@ static probe_result_t probe_mulmul(void) {
     const float a2 = 2.0f;
     const float b2 = 3.0f;
 
+    /* Mask FPU invalid-operation exception so that (0 * inf) -> QNaN
+       quietly rather than trapping. Restore FCR31 afterward. */
+    uint32_t fcr31_saved = C1_FCR31();
+    C1_WRITE_FCR31(fcr31_saved & ~(C1_ENABLE_OVERFLOW | C1_ENABLE_DIV_BY_0 | C1_ENABLE_INVALID_OP));
+
     __asm__ volatile (
         "mul.s $f0, %2, %3\n"
         "mul.s %0, %4, %5\n"
@@ -141,8 +146,8 @@ static probe_result_t probe_mulmul(void) {
         : "f"(a1), "f"(a1), "f"(b1), "f"(a2), "f"(b2)   /* dummy use of a1 */
         : "f0"
     );
-    /* Clang/GCC: separate asm block guarantees the NOP version is not
-       merged or reordered with the above. */
+    /* Separate asm block prevents the compiler from merging or reordering
+       the two mul.s sequences. */
     __asm__ volatile (
         "mul.s $f0, %2, %3\n"
         "nop\n"
@@ -151,6 +156,8 @@ static probe_result_t probe_mulmul(void) {
         : "f"(a1), "f"(a1), "f"(b1), "f"(a2), "f"(b2)
         : "f0"
     );
+
+    C1_WRITE_FCR31(fcr31_saved);
 
     if (F32I(broken) != F32I(working))
         return FAIL((uint64_t)F32I(broken) << 32 | F32I(working));
