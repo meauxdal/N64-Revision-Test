@@ -418,18 +418,18 @@ static void report(int tv_type,
     printf("\n");
 
     printf("PIF\n");
-    printf("  tv type     0xA4000009  0x%02X  %s\n",
+    printf("  tv type   0xA4000009      0x%02X  %s\n",
         (unsigned)dmem_tvtype, tv_type_str(tv_type));
-    printf("  console     0xA400000B  0x%02X  %s\n",
+    printf("  console   0xA400000B      0x%02X  %s\n",
         (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
     printf("\n");
 
-    printf("CP0 PRId  0x%08lX\n", (unsigned long)prid);
+    printf("CP0 PRId    0x%08lX\n", (unsigned long)prid);
     printf("  [15:8] ID                 0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n", (unsigned)(prid >> 0) & 0xFF);
     printf("\n");
 
-    printf("CP1 FCR0  0x%08lX\n", (unsigned long)fcr0);
+    printf("CP1 FCR0    0x%08lX\n", (unsigned long)fcr0);
     printf("  [15:8] implementation     0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n", (unsigned)(fcr0 >> 0) & 0xFF);
     printf("\n");
@@ -439,15 +439,15 @@ static void report(int tv_type,
     printf("\n");
 
     printf("RDRAM\n");
-    printf("  chip 0      mfr=0x%04X (%s)  code=0x%04X\n",
+    printf("  ID=0  manu=0x%04X (%s)  code=0x%04X\n",
         rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
-    printf("  chip 2      mfr=0x%04X (%s)  code=0x%04X\n",
+    printf("  ID=2  manu=0x%04X (%s)  code=0x%04X\n",
         rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
     if (rdram2.manu != 0)
-        printf("  chip 4      mfr=0x%04X (%s)  code=0x%04X\n",
+        printf("  ID=4  manu=0x%04X (%s)  code=0x%04X\n",
             rdram2.manu, rdram_manu_str(rdram2.manu), rdram2.code);
     if (rdram3.manu != 0)
-        printf("  chip 6      mfr=0x%04X (%s)  code=0x%04X\n",
+        printf("  ID=6  manu=0x%04X (%s)  code=0x%04X\n",
             rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
     printf("\n");
 
