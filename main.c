@@ -420,7 +420,7 @@ static void report(int tv_type,
     printf("PIF\n");
     printf("  tv type   0xA4000009      0x%02X  %s\n",
         (unsigned)dmem_tvtype, tv_type_str(tv_type));
-    printf("  console   0xA400000B      0x%02X  %s\n",
+    printf("  iQue?     0xA400000B      0x%02X  %s\n",
         (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
     printf("\n");
 

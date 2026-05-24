@@ -2,10 +2,6 @@
 
 ## n64-revision-test
 
-**region**
-
-libdragon function `get_tv_type()` via IPL boot info from PIF.
-
 ---
 
 **identifier registers**
@@ -40,19 +36,17 @@ libdragon function `get_tv_type()` via IPL boot info from PIF.
 
 expected:
 
-**rev 0x10 unit (hardware, mulmul-affected)**
+**rev 0x10 (mulmul bug present)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`
-- MI_VERSION IO: `0x02` (expected; not yet confirmed for this unit)
-- RDRAM: not yet captured
+- MI_VERSION IO: `0x02`
 - mulmul - FAIL (this may still be bugged, WIP)
 - sra    - FAIL  got=0x00000000_456789AB
 - mult   - FAIL  got=0xFFFFFFFE_00000002
 - div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
-**rev 0x22 unit (mulmul fixed)**
+**rev 0x22 (mulmul bug fixed)**
 - PRId `0x00000B22`, FCR0 `0x00000A00`
-- MI_VERSION IO: not yet captured
-- RDRAM: not yet captured
+- MI_VERSION IO: `0x02`
 - mulmul - PASS
 - sra    - FAIL  got=0x00000000_456789AB
 - mult   - FAIL  got=0xFFFFFFFE_00000002
@@ -60,8 +54,7 @@ expected:
 
 **iQue Player (hardware)**
 - PRId `0x00000B40`, FCR0 `0x00000B00`
-- MI_VERSION IO: not yet captured
-- RDRAM: not yet captured
+- MI_VERSION IO: ?
 - mulmul - PASS
 - sra    - FAIL  got=0x00000000_456789AB
 - mult   - FAIL  got=0xFFFFFFFE_00000002
