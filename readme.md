@@ -40,7 +40,7 @@ Not all board revisions have been tested.
 | `mult`   | 32-bit signed multiply sign-extension anomaly | STUB |
 | `div`    | 32-bit signed divide sign-extension anomaly | STUB |
 
-STUB = wip pending help from n64brew folks.
+STUB = wip
 
 ares v147:
 - mulmul - PASS

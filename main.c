@@ -231,9 +231,15 @@ static const probe_entry_t probes[] = {
  * Reporting
  * ---------------------------------------------------------------------- */
 
-static void report_console(uint8_t pif_region, int tv_type,
-                            uint32_t prid, uint32_t fcr0)
+static void report(uint8_t pif_region, int tv_type,
+                   uint32_t prid, uint32_t fcr0)
 {
+    /* Run all probes once and cache results. */
+    probe_result_t results[NUM_PROBES];
+    for (size_t i = 0; i < NUM_PROBES; i++)
+        results[i] = probes[i].fn();
+
+    /* Console output */
     printf("=== n64-hardware-test ===\n\n");
 
     printf("PIF   0x%02X  %s\n\n", pif_region, tv_type_str(tv_type));
@@ -247,21 +253,16 @@ static void report_console(uint8_t pif_region, int tv_type,
     printf("  rev   0x%02X\n\n", (unsigned)(fcr0 >> 0) & 0xFF);
 
     for (size_t i = 0; i < NUM_PROBES; i++) {
-        const probe_entry_t *p = &probes[i];
-        probe_result_t r = p->fn();
-        printf("%-8s  %s", p->tag, status_str(r.status));
-        if (r.status == RESULT_FAIL && r.detail != 0) {
+        printf("%-8s  %s", probes[i].tag, status_str(results[i].status));
+        if (results[i].status == RESULT_FAIL && results[i].detail != 0) {
             printf("  got=0x%08lX_%08lX",
-                (unsigned long)(r.detail >> 32),
-                (unsigned long)(r.detail & 0xFFFFFFFF));
+                (unsigned long)(results[i].detail >> 32),
+                (unsigned long)(results[i].detail & 0xFFFFFFFF));
         }
         printf("\n");
     }
-}
 
-static void report_debug(uint8_t pif_region, int tv_type,
-                          uint32_t prid, uint32_t fcr0)
-{
+    /* Debug log */
     debugf("=== n64-hardware-test ===\n");
     debugf("PIF=0x%02X %s\n", pif_region, tv_type_str(tv_type));
     debugf("PRId=0x%08lX impl=0x%02X rev=0x%02X\n",
@@ -274,13 +275,11 @@ static void report_debug(uint8_t pif_region, int tv_type,
         (unsigned)(fcr0 >> 0) & 0xFF);
 
     for (size_t i = 0; i < NUM_PROBES; i++) {
-        const probe_entry_t *p = &probes[i];
-        probe_result_t r = p->fn();
-        debugf("%s: %s", p->tag, status_str(r.status));
-        if (r.status == RESULT_FAIL && r.detail != 0) {
+        debugf("%s: %s", probes[i].tag, status_str(results[i].status));
+        if (results[i].status == RESULT_FAIL && results[i].detail != 0) {
             debugf("  got=0x%08lX_%08lX",
-                (unsigned long)(r.detail >> 32),
-                (unsigned long)(r.detail & 0xFFFFFFFF));
+                (unsigned long)(results[i].detail >> 32),
+                (unsigned long)(results[i].detail & 0xFFFFFFFF));
         }
         debugf("\n");
     }
@@ -303,8 +302,7 @@ int main(void) {
     uint32_t prid       = read_prid();
     uint32_t fcr0       = read_fcr0();
 
-    report_console(pif_region, tv_type, prid, fcr0);
-    report_debug(pif_region, tv_type, prid, fcr0);
+    report(pif_region, tv_type, prid, fcr0);
 
     console_render();
 
