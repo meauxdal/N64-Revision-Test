@@ -1,9 +1,5 @@
 /**
  * n64-hardware-test
- * Hardware revision characterization ROM for Nintendo 64.
- *
- * Reads processor and FPU revision identifiers, runs targeted bug probes,
- * and reports raw results to both the console OSD and USB/isviewer debug log.
  *
  * Adding a new probe:
  *   1. Write a probe_*() function returning probe_result_t.
@@ -56,6 +52,24 @@ static const char *status_str(probe_status_t s) {
 }
 
 /* -------------------------------------------------------------------------
+ * Region read
+ * ---------------------------------------------------------------------- */
+
+/* PIF ROM region byte set by bootstrap. 0=PAL, 1=NTSC, 2=MPAL */
+static uint8_t read_pif_region(void) {
+    return *((volatile uint8_t *)0xBFC007FC);
+}
+
+static const char *tv_type_str(int t) {
+    switch (t) {
+        case TV_PAL:  return "PAL";
+        case TV_NTSC: return "NTSC";
+        case TV_MPAL: return "MPAL";
+    }
+    return "unknown";
+}
+
+/* -------------------------------------------------------------------------
  * Identifier reads
  * ---------------------------------------------------------------------- */
 
@@ -76,7 +90,7 @@ static uint32_t read_fcr0(void) {
  *
  * Back-to-back mul.s may produce incorrect results for the second multiply
  * when the first multiply's operands include sNaN, Zero, or Infinity.
- * Affects VR4300 versions 1.x, 2.0, 2.1. Fixed in 2.2+.
+ * Affects VR4300 versions 1.x, 2.0, 2.1.
  * A single intervening instruction (e.g. NOP) clears the hazard.
  *
  * Probe: compare results of the hazard sequence vs. the NOP-separated
@@ -170,22 +184,15 @@ static const probe_entry_t probes[] = {
 #define NUM_PROBES (sizeof(probes) / sizeof(probes[0]))
 
 /* -------------------------------------------------------------------------
- * Entry point
+ * Reporting
  * ---------------------------------------------------------------------- */
 
-int main(void) {
-    debug_init_isviewer();
-    debug_init_usblog();
-
-    console_init();
-    console_set_render_mode(RENDER_MANUAL);
-    console_clear();
-
-    uint32_t prid = read_prid();
-    uint32_t fcr0 = read_fcr0();
-
-    /* Console output */
+static void report_console(uint8_t pif_region, int tv_type,
+                            uint32_t prid, uint32_t fcr0)
+{
     printf("=== n64-hardware-test ===\n\n");
+
+    printf("PIF   0x%02X  %s\n\n", pif_region, tv_type_str(tv_type));
 
     printf("PRId  0x%08lX\n", (unsigned long)prid);
     printf("  impl  0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
@@ -206,9 +213,13 @@ int main(void) {
         }
         printf("\n");
     }
+}
 
-    /* Debug log */
+static void report_debug(uint8_t pif_region, int tv_type,
+                          uint32_t prid, uint32_t fcr0)
+{
     debugf("=== n64-hardware-test ===\n");
+    debugf("PIF=0x%02X %s\n", pif_region, tv_type_str(tv_type));
     debugf("PRId=0x%08lX impl=0x%02X rev=0x%02X\n",
         (unsigned long)prid,
         (unsigned)(prid >> 8) & 0xFF,
@@ -229,6 +240,27 @@ int main(void) {
         }
         debugf("\n");
     }
+}
+
+/* -------------------------------------------------------------------------
+ * Entry point
+ * ---------------------------------------------------------------------- */
+
+int main(void) {
+    debug_init_isviewer();
+    debug_init_usblog();
+
+    console_init();
+    console_set_render_mode(RENDER_MANUAL);
+    console_clear();
+
+    uint8_t  pif_region = read_pif_region();
+    int      tv_type    = get_tv_type();
+    uint32_t prid       = read_prid();
+    uint32_t fcr0       = read_fcr0();
+
+    report_console(pif_region, tv_type, prid, fcr0);
+    report_debug(pif_region, tv_type, prid, fcr0);
 
     console_render();
 
