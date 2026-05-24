@@ -177,11 +177,12 @@ static probe_result_t probe_sra(void) {
         : "$t0", "$t1"
     );
 
-    const uint64_t hw_expected  = 0x00000000456789ABULL;
-    const uint64_t man_expected = 0xFFFFFFFFFFFF89ABULL;
+    const uint64_t man_expected = 0xFFFFFFFFFFFF89ABULL;  /* bug absent */
+    const uint64_t hw_observed  = 0x00000000456789ABULL;  /* bug fires */
 
-    if (result == hw_expected)  return PASS();
-    if (result == man_expected) return FAIL(1ULL);
+    /* debug: always return raw result in detail regardless of outcome */
+    if (result == man_expected) return (probe_result_t){ RESULT_PASS, result };
+    if (result == hw_observed)  return FAIL(result);
     return FAIL(result);
 }
 
@@ -250,8 +251,8 @@ static void report_console(uint8_t pif_region, int tv_type,
         const probe_entry_t *p = &probes[i];
         probe_result_t r = p->fn();
         printf("%-8s  %s", p->tag, status_str(r.status));
-        if (r.status == RESULT_FAIL && r.detail != 0) {
-            printf("  got=0x%08lX  ref=0x%08lX",
+        if (r.detail != 0) {
+            printf("  raw=0x%08lX_%08lX",
                 (unsigned long)(r.detail >> 32),
                 (unsigned long)(r.detail & 0xFFFFFFFF));
         }
