@@ -363,7 +363,7 @@ static void report(int tv_type, uint32_t pif_boot_word,
 
     printf("hw bugs\n");
     for (size_t i = 0; i < NUM_PROBES; i++) {
-        printf("  %-8s  %s", probes[i].tag, status_str(results[i].status));
+        printf("  %-6s  %s", probes[i].tag, status_str(results[i].status));
         if (results[i].status == RESULT_FAIL && results[i].detail != 0) {
             printf("  got=0x%08lX_%08lX",
                 (unsigned long)(results[i].detail >> 32),
