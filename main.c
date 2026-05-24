@@ -434,14 +434,14 @@ static void report(int tv_type,
     printf("  [7:0]  revision           0x%02X\n", (unsigned)(fcr0 >> 0) & 0xFF);
     printf("\n");
 
-    printf("MI_VERSION      0x%08lX\n", (unsigned long)mi_version);
-    printf("  IO version      0x%02X\n", (unsigned)(mi_version & 0xFF));
+    printf("MI_VERSION  0x%08lX\n", (unsigned long)mi_version);
+    printf("  IO version                0x%02X\n", (unsigned)(mi_version & 0xFF));
     printf("\n");
 
     printf("RDRAM\n");
-    printf("  chip 0        mfr=0x%04X (%s)  code=0x%04X\n",
+    printf("  chip 0      mfr=0x%04X (%s)  code=0x%04X\n",
         rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
-    printf("  chip 2        mfr=0x%04X (%s)  code=0x%04X\n",
+    printf("  chip 2      mfr=0x%04X (%s)  code=0x%04X\n",
         rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
     if (rdram2.manu != 0)
         printf("  chip 4      mfr=0x%04X (%s)  code=0x%04X\n",
