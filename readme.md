@@ -46,42 +46,42 @@ ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak).
 **rev 0x10 (mulmul bug present)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`
 - MI_VERSION `0x02020102` (IO `0x02`)
-- mulmul - FAIL  got=0x05770421_05770422
-- sra    - FAIL  got=0x00000000_456789AB
-- mult   - FAIL  got=0xFFFFFFFE_00000002
-- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
+- mulmul - FAIL  got=`0x05770421_05770422`
+- sra    - FAIL  got=`0x00000000_456789AB`
+- mult   - FAIL  got=`0xFFFFFFFE_00000002`
+- div    - FAIL  got=`0x2AAAAAB4_AAAAAAAB`
 
 **rev 0x22 (mulmul bug fixed)**
 - PRId `0x00000B22`, FCR0 `0x00000A00`
 - MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - PASS
-- sra    - FAIL  got=0x00000000_456789AB
-- mult   - FAIL  got=0xFFFFFFFE_00000002
-- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
+- sra    - FAIL  got=`0x00000000_456789AB`
+- mult   - FAIL  got=`0xFFFFFFFE_00000002`
+- div    - FAIL  got=`0x2AAAAAB4_AAAAAAAB`
 
 **iQue Player**
 - PRId `0x00000B40`, FCR0 `0x00000B00`
 - MI_VERSION: `0x0202B0B0` (IO `0xB0`)
 - mulmul - PASS
-- sra    - FAIL  got=0x00000000_456789AB
-- mult   - FAIL  got=0xFFFFFFFE_00000002
-- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
+- sra    - FAIL  got=`0x00000000_456789AB`
+- mult   - FAIL  got=`0xFFFFFFFE_00000002`
+- div    - FAIL  got=`0x2AAAAAB4_AAAAAAAB`
 
 **ares v147-122-g0394fd90a**
 - PRId `0x00000B22`, FCR0 `0x00000A00`
 - MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - PASS
-- sra    - FAIL  got=0x00000000_456789AB
-- mult   - FAIL  got=0xFFFFFFFE_00000002
-- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
+- sra    - FAIL  got=`0x00000000_456789AB`
+- mult   - FAIL  got=`0xFFFFFFFE_00000002`
+- div    - FAIL  got=`0x0000000A_00000000` (different than hardware)
 
 **MiSTer (N64 core) (20260524 "MTM3" build)**
 - PRId `0x00000B22`, FCR0 `0x00000A00`
 - MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - PASS
-- sra    - FAIL  got=0x00000000_456789AB
+- sra    - FAIL  got=`0x00000000_456789AB`
 - mult   - PASS
-- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
+- div    - FAIL  got=`0x2AAAAAB4_AAAAAAAB`
 
 **Analogue 3D**
 - PRId `0x????????`, FCR0 `0x????????`
