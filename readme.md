@@ -41,7 +41,7 @@ the `mulmul` probe uses a specific input pattern (`7F800000 * 37BAD25F, 38978B5D
 
 **observed output**
 
-RDRAM lines for ID=4 and ID=6 are only printed if a chip is detected there (expansion pak). the `manu != 0` heuristic is used for detection.
+ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak). 
 
 **rev 0x10 (mulmul bug present)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`
@@ -112,7 +112,7 @@ github actions builds automatically on push.
 
 ---
 
-**from the libultra SDK documentation**
+**from the libultra SDK documentation "Nintendo 64 Developer News 1.2"**
 
 > Back-to-Back Floating Point Multiplies May Give Incorrect Results
 >
@@ -131,6 +131,6 @@ github actions builds automatically on push.
 
 **references**
 
-- [Nintendo 64 Developer News](https://web.archive.org/web/20180810105528/https://level42.ca/projects/ultra64/Documentation/man/developerNews/news-02.html)
+- [Nintendo 64 Developer News 1.2](https://web.archive.org/web/20180810105528/https://level42.ca/projects/ultra64/Documentation/man/developerNews/news-02.html)
 - [n64brew wiki - VR4300](https://n64brew.dev/wiki/VR4300)
 - [u64check man page](https://help.graphica.com.au/irix-6.5.30/man/1/u64check)
