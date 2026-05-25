@@ -186,10 +186,10 @@ static probe_result_t probe_mulmul(void) {
      * PASS = results match (bug absent).
      * FAIL = results differ (bug fires). Detail = broken:working.
      */
-    uint32_t bits_zero = 0x00000000UL;          /* 0.0f */
-    uint32_t bits_inf  = 0x7F800000UL;          /* +inf */
-    uint32_t bits_two  = 0x40000000UL;          /* 2.0f */
-    uint32_t bits_thr  = 0x40400000UL;          /* 3.0f */
+    uint32_t bits_1 = 0x7F800000;
+    uint32_t bits_2 = 0x37BAD25F;
+    uint32_t bits_3 = 0x38978B5D;
+    uint32_t bits_4 = 0x0C50A394;
     uint32_t broken, working;
 
     uint32_t fcr31_saved = C1_FCR31();
@@ -210,7 +210,7 @@ static probe_result_t probe_mulmul(void) {
         "mul.s  $f1, $f14, $f15\n"
         "mfc1   %1, $f1\n"
         : "=r"(broken), "=r"(working)
-        : "r"(bits_two), "r"(bits_thr), "r"(bits_zero), "r"(bits_inf)
+        : "r"(bits_1), "r"(bits_2), "r"(bits_3), "r"(bits_4)
         : "$f0", "$f1", "$f12", "$f13", "$f14", "$f15"
     );
 
@@ -413,12 +413,9 @@ static void report(int tv_type,
         results[i] = probes[i].fn();
 
     printf("=== n64-revision-test ===\n");
-    printf("\n");
-
-    printf("PIF\n");
-    printf("  tv type   0xA4000009      0x%02X  %s\n",
+    printf("tv type   0xA4000009        0x%02X  %s\n",
         (unsigned)dmem_tvtype, tv_type_str(tv_type));
-    printf("  iQue?     0xA400000B      0x%02X  %s\n",
+    printf("iQue?     0xA400000B        0x%02X  %s\n",
         (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
     printf("\n");
 
