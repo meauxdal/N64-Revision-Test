@@ -166,6 +166,14 @@ static rdram_manufacturer_t read_rdram_manufacturer(int chip_id) {
  * RDRAM register dump
  * ---------------------------------------------------------------------- */
 
+static uint32_t rdram_read_reg(int chip_id, int reg)
+{
+    if (reg & 1) *MI_MODE_REG = MI_WMODE_SET_UPPER;
+    uint32_t raw = RDRAM_REGS[(chip_id << 8) + reg];
+    if (reg & 1) *MI_MODE_REG = MI_WMODE_CLR_UPPER;
+    return byteswap32(raw);
+}
+
 static void dump_rdram_regs(int chip_id)
 {
     uint32_t dt = rdram_read_reg(chip_id, 0);
@@ -190,14 +198,6 @@ static void dump_rdram_regs(int chip_id)
     debugf("  r07 MinInterval        0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 7));
     debugf("  r08 AddressSelect      0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 8));
     debugf("  r09 DeviceManufacturer 0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 9));
-}
-
-static uint32_t rdram_read_reg(int chip_id, int reg)
-{
-    if (reg & 1) *MI_MODE_REG = MI_WMODE_SET_UPPER;
-    uint32_t raw = RDRAM_REGS[(chip_id << 8) + reg];
-    if (reg & 1) *MI_MODE_REG = MI_WMODE_CLR_UPPER;
-    return byteswap32(raw);
 }
 
 /* -------------------------------------------------------------------------
