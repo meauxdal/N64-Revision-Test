@@ -500,7 +500,13 @@ int main(void) {
     if (has_expak) {
         rdram2 = read_rdram_manufacturer(4);
         rdram3 = read_rdram_manufacturer(6);
-    }
+    
+    dump_rdram_regs(0);
+    dump_rdram_regs(2);
+    if (has_expak) {
+        dump_rdram_regs(4);
+        dump_rdram_regs(6);
+    }    
 
     report(dmem_tvtype, tv_type,
         dmem_consoletype, is_ique, 
@@ -534,13 +540,13 @@ static void dump_rdram_regs(int chip_id)
     debugf("  r00 DeviceType         0x%08lX"
            "  ColBits=%u BankBits=%u RowBits=%u Bn=%u En=%u Ver=%u Type=%u\n",
         (unsigned long)dt,
-        (dt >> 28) & 0xF,   /* ColumnBits  */
-        (dt >> 20) & 0xF,   /* BankBits    */
-        (dt >> 16) & 0xF,   /* RowBits     */
-        (dt >> 26) & 0x1,   /* Bn: 9-bit byte */
-        (dt >> 24) & 0x1,   /* En: low latency */
-        (dt >>  4) & 0xF,   /* Version     */
-        (dt >>  0) & 0xF);  /* Type        */
+        (unsigned int)((dt >> 28) & 0xF),
+        (unsigned int)((dt >> 20) & 0xF),
+        (unsigned int)((dt >> 16) & 0xF),
+        (unsigned int)((dt >> 26) & 0x1),
+        (unsigned int)((dt >> 24) & 0x1),
+        (unsigned int)((dt >>  4) & 0xF),
+        (unsigned int)((dt >>  0) & 0xF));
     debugf("  r01 DeviceId           0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 1));
     debugf("  r02 Delay              0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 2));
     debugf("  r03 Mode               0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 3));
