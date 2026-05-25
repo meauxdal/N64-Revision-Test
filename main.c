@@ -210,7 +210,7 @@ static probe_result_t probe_mulmul(void) {
         "mul.s  $f1, $f14, $f15\n"
         "mfc1   %1, $f1\n"
         : "=r"(broken), "=r"(working)
-        : "r"(bits_zero), "r"(bits_inf), "r"(bits_two), "r"(bits_thr)
+        : "r"(bits_two), "r"(bits_thr), "r"(bits_zero), "r"(bits_inf)
         : "$f0", "$f1", "$f12", "$f13", "$f14", "$f15"
     );
 
