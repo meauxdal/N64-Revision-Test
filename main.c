@@ -409,29 +409,34 @@ static const probe_entry_t probes[] = {
  * Reporting
  * ---------------------------------------------------------------------- */
 
-static void report(int tv_type,
-                   uint8_t dmem_tvtype, uint8_t dmem_consoletype,
-                   uint32_t prid, uint32_t fcr0, bool is_ique,
-                   uint32_t mi_version,
-                   rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1, rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
+static void report(
+    int tv_type, uint8_t dmem_tvtype,
+    uint8_t dmem_consoletype, bool is_ique,
+    uint32_t prid, 
+    uint32_t fcr0,
+    uint32_t mi_version,
+    bool has_expak,
+    rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1,
+    rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
+    
 {
     probe_result_t results[NUM_PROBES];
     for (size_t i = 0; i < NUM_PROBES; i++)
         results[i] = probes[i].fn();
 
     printf("=== n64-revision-test ===\n");
-    printf("tv type   0xA4000009        0x%02X  %s\n",
+    printf("tv type     (0xA4000009)    0x%02X  %s\n",
         (unsigned)dmem_tvtype, tv_type_str(tv_type));
-    printf("iQue?     0xA400000B        0x%02X  %s\n",
+    printf("iQue?       (0xA400000B)    0x%02X  %s\n",
         (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
     printf("\n");
 
-    printf("CP0 PRId    ($15)           0x%08lX\n", (unsigned long)prid);
+    printf("CP0 PRId    (reg 15)        0x%08lX\n", (unsigned long)prid);
     printf("  [15:8] ID                 0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n", (unsigned)(prid >> 0) & 0xFF);
     printf("\n");
 
-    printf("CP1 FCR0    ($0)            0x%08lX\n", (unsigned long)fcr0);
+    printf("CP1 FCR0    (reg 0)         0x%08lX\n", (unsigned long)fcr0);
     printf("  [15:8] implementation     0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n", (unsigned)(fcr0 >> 0) & 0xFF);
     printf("\n");
@@ -445,10 +450,10 @@ static void report(int tv_type,
         rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
     printf("  ID=2  manu=0x%04X (%s)  code=0x%04X\n",
         rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
-    if (rdram2.manu != 0)
+    if (has_expak)
         printf("  ID=4  manu=0x%04X (%s)  code=0x%04X\n",
             rdram2.manu, rdram_manu_str(rdram2.manu), rdram2.code);
-    if (rdram3.manu != 0)
+    if (has_expak)
         printf("  ID=6  manu=0x%04X (%s)  code=0x%04X\n",
             rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
     printf("\n");
@@ -486,11 +491,19 @@ int main(void) {
     uint32_t mi_version         = read_mi_version();
     rdram_manufacturer_t rdram0 = read_rdram_manufacturer(0);
     rdram_manufacturer_t rdram1 = read_rdram_manufacturer(2);
-    rdram_manufacturer_t rdram2 = read_rdram_manufacturer(4);
-    rdram_manufacturer_t rdram3 = read_rdram_manufacturer(6);
+
+    uint32_t memsize = get_memory_size();
+    bool has_expak   = (memsize > 4*1024*1024);
+
+    rdram_manufacturer_t rdram2 = {0}, rdram3 = {0};
+    if (has_expak) {
+        rdram2 = read_rdram_manufacturer(4);
+        rdram3 = read_rdram_manufacturer(6);
+    }
 
     report(tv_type, dmem_tvtype, dmem_consoletype,
-        prid, fcr0, is_ique, mi_version, rdram0, rdram1, rdram2, rdram3);
+        prid, fcr0, is_ique, mi_version, 
+        has_expak, rdram0, rdram1, rdram2, rdram3);
 
     console_render();
 

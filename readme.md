@@ -68,19 +68,23 @@ RDRAM lines for ID=4 and ID=6 are only printed if a chip is detected there (expa
 - div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
 **ares v147-122-g0394fd90a**
+- PRId `0x00000B22`, FCR0 `0x00000A00`
+- MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - PASS
 - sra    - FAIL  got=0x00000000_456789AB
 - mult   - FAIL  got=0xFFFFFFFE_00000002
 - div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
 **MiSTer (N64 core) (20260524 "MTM3" build)**
+- PRId `0x00000B22`, FCR0 `0x00000A00`
+- MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - PASS
 - sra    - FAIL  got=0x00000000_456789AB
 - mult   - PASS
 - div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
 **Analogue 3D**
-- PRId `?`, FCR0 `?`
+- PRId `0x????????`, FCR0 `0x????????`
 - MI_VERSION: `0x??????03` (IO `0x03`)
 - mulmul - ?
 - sra    - ?
