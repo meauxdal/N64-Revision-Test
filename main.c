@@ -489,7 +489,7 @@ int main(void) {
     uint32_t fcr0               = read_fcr0();
     
     uint32_t mi_version         = read_mi_version();
-    
+
     rdram_manufacturer_t rdram0 = read_rdram_manufacturer(0);
     rdram_manufacturer_t rdram1 = read_rdram_manufacturer(2);
 
@@ -512,4 +512,42 @@ int main(void) {
     console_render();
 
     while (1) {}
+}
+
+/* -------------------------------------------------------------------------
+ * RDRAM register dump
+ * ---------------------------------------------------------------------- */
+
+static uint32_t rdram_read_reg(int chip_id, int reg)
+{
+    if (reg & 1) *MI_MODE_REG = MI_WMODE_SET_UPPER;
+    uint32_t raw = RDRAM_REGS[(chip_id << 8) + reg];
+    if (reg & 1) *MI_MODE_REG = MI_WMODE_CLR_UPPER;
+    return byteswap32(raw);
+}
+
+static void dump_rdram_regs(int chip_id)
+{
+    uint32_t dt = rdram_read_reg(chip_id, 0);
+
+    debugf("RDRAM chip_id=%d\n", chip_id);
+    debugf("  r00 DeviceType         0x%08lX"
+           "  ColBits=%u BankBits=%u RowBits=%u Bn=%u En=%u Ver=%u Type=%u\n",
+        (unsigned long)dt,
+        (dt >> 28) & 0xF,   /* ColumnBits  */
+        (dt >> 20) & 0xF,   /* BankBits    */
+        (dt >> 16) & 0xF,   /* RowBits     */
+        (dt >> 26) & 0x1,   /* Bn: 9-bit byte */
+        (dt >> 24) & 0x1,   /* En: low latency */
+        (dt >>  4) & 0xF,   /* Version     */
+        (dt >>  0) & 0xF);  /* Type        */
+    debugf("  r01 DeviceId           0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 1));
+    debugf("  r02 Delay              0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 2));
+    debugf("  r03 Mode               0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 3));
+    debugf("  r04 RefInterval        0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 4));
+    debugf("  r05 RefRow             0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 5));
+    debugf("  r06 RasInterval        0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 6));
+    debugf("  r07 MinInterval        0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 7));
+    debugf("  r08 AddressSelect      0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 8));
+    debugf("  r09 DeviceManufacturer 0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 9));
 }
