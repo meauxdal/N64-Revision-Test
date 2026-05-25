@@ -409,12 +409,12 @@ static const probe_entry_t probes[] = {
  * Reporting
  * ---------------------------------------------------------------------- */
 
-static void report(int tv_type,
-                   uint8_t dmem_tvtype, uint8_t dmem_consoletype,
-                   uint32_t prid, uint32_t fcr0, bool is_ique,
-                   uint32_t mi_version,
-                   bool has_expak,
-                   rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1, rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
+static void report(uint8_t dmem_tvtype, int tv_type,
+                   uint8_t dmem_consoletype, bool is_ique,
+                   uint32_t prid, uint32_t fcr0,
+                   uint32_t mi_version, bool has_expak,
+                   rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1,
+                   rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
 
 {
     probe_result_t results[NUM_PROBES];
@@ -479,13 +479,17 @@ int main(void) {
     console_set_render_mode(RENDER_MANUAL);
     console_clear();
 
-    int      tv_type            = get_tv_type();
     uint8_t  dmem_tvtype        = read_dmem_tvtype();
+    int      tv_type            = get_tv_type();
+    
     uint8_t  dmem_consoletype   = read_dmem_consoletype();
+    bool     is_ique            = sys_bbplayer();
+
     uint32_t prid               = read_prid();
     uint32_t fcr0               = read_fcr0();
-    bool     is_ique            = sys_bbplayer();
+    
     uint32_t mi_version         = read_mi_version();
+    
     rdram_manufacturer_t rdram0 = read_rdram_manufacturer(0);
     rdram_manufacturer_t rdram1 = read_rdram_manufacturer(2);
 
@@ -498,9 +502,12 @@ int main(void) {
         rdram3 = read_rdram_manufacturer(6);
     }
 
-    report(tv_type, dmem_tvtype, dmem_consoletype,
-        prid, fcr0, is_ique, mi_version, 
-        has_expak, rdram0, rdram1, rdram2, rdram3);
+    report(dmem_tvtype, tv_type,
+        dmem_consoletype, is_ique, 
+        prid, fcr0,
+        mi_version, has_expak,
+        rdram0, rdram1,
+        rdram2, rdram3);
 
     console_render();
 
