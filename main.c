@@ -409,16 +409,13 @@ static const probe_entry_t probes[] = {
  * Reporting
  * ---------------------------------------------------------------------- */
 
-static void report(
-    int tv_type, uint8_t dmem_tvtype,
-    uint8_t dmem_consoletype, bool is_ique,
-    uint32_t prid, 
-    uint32_t fcr0,
-    uint32_t mi_version,
-    bool has_expak,
-    rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1,
-    rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
-    
+static void report(int tv_type,
+                   uint8_t dmem_tvtype, uint8_t dmem_consoletype,
+                   uint32_t prid, uint32_t fcr0, bool is_ique,
+                   uint32_t mi_version,
+                   bool has_expak,
+                   rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1, rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
+
 {
     probe_result_t results[NUM_PROBES];
     for (size_t i = 0; i < NUM_PROBES; i++)
