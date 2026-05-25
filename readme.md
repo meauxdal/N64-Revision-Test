@@ -2,16 +2,19 @@
 
 ## n64-revision-test
 
+reads region, CPU/FPU identifiers, RCP version, RDRAM manufacturer, and probes for known VR4300 hardware bugs.
+
 ---
 
 **identifier registers**
 
-| register | field  | label          | known values    | notes           |
-|----------|--------|----------------|-----------------|-----------------|
-| CP0 PRId | [15:8] | processor ID   | `0x0B`          | VR4300          |
-| CP0 PRId | [7:0]  | revision       | varies          | see below       |
-| CP1 FCR0 | [15:8] | implementation | `0x0A` / `0x0B` | retail / iQue   |
-| CP1 FCR0 | [7:0]  | revision       | `0x00`          | all known units |
+| register   | field  | label          | known values    | notes                |
+|------------|--------|----------------|-----------------|----------------------|
+| CP0 PRId   | [15:8] | processor ID   | `0x0B`          | VR4300               |
+| CP0 PRId   | [7:0]  | revision       | varies          | see below            |
+| CP1 FCR0   | [15:8] | implementation | `0x0A` / `0x0B` | retail / iQue        |
+| CP1 FCR0   | [7:0]  | revision       | `0x00`          | all known units      |
+| MI_VERSION | [7:0]  | IO version     | `0x02` / `0x03` | retail / Analogue 3D |
 
 **observed PRId revisions**
 
@@ -26,35 +29,39 @@
 **bug probes**
 
 | probe | what it tests | link |
-|-------|---------------|----------|
+|-------|---------------|------|
 | `mulmul` | FP double-multiply hazard (sNaN/Zero/Inf operands) | https://n64brew.dev/wiki/VR4300#Multiplication_Bug |
 | `sra` | 32-bit arithmetic right shift 64-bit state leak | https://n64brew.dev/wiki/VR4300#32-bit_Shift_Right_Arithmetic_Bug |
 | `mult` | 32-bit signed multiply sign-extension anomaly | https://n64brew.dev/wiki/VR4300#Sign_extension_bugs |
 | `div` | 32-bit signed divide sign-extension anomaly | https://n64brew.dev/wiki/VR4300#Sign_extension_bugs |
 
+the `mulmul` probe uses a specific input pattern (`7F800000 * 37BAD25F, 38978B5D * 0C50A394`) confirmed to trigger the bug on affected hardware per logs provided by Buu42. original ctest.z64 test by HailtoDodongo; test here fixed by Jhynjhiruu.
+
 ---
 
-expected:
+**observed output**
+
+RDRAM lines for ID=4 and ID=6 are only printed if a chip is detected there (expansion pak). the `manu != 0` heuristic is used for detection.
 
 **rev 0x10 (mulmul bug present)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`
-- MI_VERSION IO: `0x02`
-- mulmul - FAIL (this may still be bugged, WIP)
+- MI_VERSION `0x02020102` (IO `0x02`)
+- mulmul - FAIL  got=0x05770421_05770422
 - sra    - FAIL  got=0x00000000_456789AB
 - mult   - FAIL  got=0xFFFFFFFE_00000002
 - div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
 **rev 0x22 (mulmul bug fixed)**
 - PRId `0x00000B22`, FCR0 `0x00000A00`
-- MI_VERSION IO: `0x02`
+- MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - PASS
 - sra    - FAIL  got=0x00000000_456789AB
 - mult   - FAIL  got=0xFFFFFFFE_00000002
 - div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
 
-**iQue Player (hardware)**
+**iQue Player**
 - PRId `0x00000B40`, FCR0 `0x00000B00`
-- MI_VERSION IO: ?
+- MI_VERSION: `0x0202B0B0` (IO `0xB0`)
 - mulmul - PASS
 - sra    - FAIL  got=0x00000000_456789AB
 - mult   - FAIL  got=0xFFFFFFFE_00000002
@@ -65,6 +72,20 @@ expected:
 - sra    - FAIL  got=0x00000000_456789AB
 - mult   - FAIL  got=0xFFFFFFFE_00000002
 - div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
+
+**MiSTer (N64 core) (20260524 "MTM3" build)**
+- mulmul - PASS
+- sra    - FAIL  got=0x00000000_456789AB
+- mult   - PASS
+- div    - FAIL  got=0x2AAAAAB4_AAAAAAAB
+
+**Analogue 3D**
+- PRId `?`, FCR0 `?`
+- MI_VERSION: `0x??????03` (IO `0x03`)
+- mulmul - ?
+- sra    - ?
+- mult   - ?
+- div    - ?
 
 ---
 
