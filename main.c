@@ -46,18 +46,16 @@ static const char *status_str(probe_status_t s) {
 /* -------------------------------------------------------------------------
  * Region / console type
  *
- * libdragon reads these from RSP DMEM at boot (crt0.S):
+ * libdragon caches boot information from RSP DMEM during startup:
+ *
  *   0xA4000009 -> __boot_tvtype      -> get_tv_type()
  *   0xA400000A -> __boot_resettype
  *   0xA400000B -> __boot_consoletype -> sys_bbplayer()
  *
- * 0xBFC007E4 is the PIF-RAM boot info word written by IPL2,
- * source of the above values before libdragon parses them.
+ * These bytes originate from the IPL boot process. The corresponding
+ * PIF-RAM boot word at 0xBFC007E4 appears to be cleared before main()
+ * executes, so the preserved DMEM copies are used instead.
  * ---------------------------------------------------------------------- */
-
-static uint32_t read_pif_boot_word(void) {
-    return *((volatile uint32_t *)0xBFC007E4);
-}
 
 static uint8_t read_dmem_tvtype(void) {
     return *((volatile uint8_t *)0xA4000009);
@@ -424,17 +422,17 @@ static void report(int tv_type,
         (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
     printf("\n");
 
-    printf("CP0 PRId    0x%08lX\n", (unsigned long)prid);
+    printf("CP0 PRId    ($15)           0x%08lX\n", (unsigned long)prid);
     printf("  [15:8] ID                 0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n", (unsigned)(prid >> 0) & 0xFF);
     printf("\n");
 
-    printf("CP1 FCR0    0x%08lX\n", (unsigned long)fcr0);
+    printf("CP1 FCR0    ($0)            0x%08lX\n", (unsigned long)fcr0);
     printf("  [15:8] implementation     0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n", (unsigned)(fcr0 >> 0) & 0xFF);
     printf("\n");
 
-    printf("MI_VERSION  0x%08lX\n", (unsigned long)mi_version);
+    printf("MI_VERSION  (0xA4300004)    0x%08lX\n", (unsigned long)mi_version);
     printf("  IO version                0x%02X\n", (unsigned)(mi_version & 0xFF));
     printf("\n");
 
