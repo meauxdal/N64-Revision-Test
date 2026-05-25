@@ -81,7 +81,7 @@ ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak).
 - mulmul - PASS
 - sra    - FAIL  got=`0x00000000_456789AB`
 - mult   - PASS
-- div    - FAIL  got=`0x2AAAAAB4_AAAAAAAB`
+- div    - FAIL  got=`0x0000000A_00000000` (different than hardware)
 
 **Analogue 3D**
 - PRId `0x????????`, FCR0 `0x????????`
