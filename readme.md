@@ -106,5 +106,6 @@ github actions builds automatically on push.
 
 **references**
 
+- [Nintendo 64 Developer News](https://web.archive.org/web/20180810105528/https://level42.ca/projects/ultra64/Documentation/man/developerNews/news-02.html)
 - [n64brew wiki - VR4300](https://n64brew.dev/wiki/VR4300)
 - [u64check man page](https://help.graphica.com.au/irix-6.5.30/man/1/u64check)

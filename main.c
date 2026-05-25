@@ -185,6 +185,13 @@ static probe_result_t probe_mulmul(void) {
      *
      * PASS = results match (bug absent).
      * FAIL = results differ (bug fires). Detail = broken:working.
+     * 
+     * Original ctest.z64 mulmul test by HailtoDodongo
+     * Run on hardware known to have the bug by Buu42
+     * Known-bad input pattern provided from log by Buu42:
+     * (7F800000 * 37BAD25F, 38978B5D * 0C50A394): 05770421 != 05770422
+     * 
+     * test fixed by Jhynjhiruu
      */
     uint32_t bits_1 = 0x7F800000;
     uint32_t bits_2 = 0x37BAD25F;
