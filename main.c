@@ -488,11 +488,16 @@ static void report(uint8_t dmem_tvtype, int tv_type,
         results[i] = probes[i].fn();
 
     printf("====================== n64-revision-test ======================\n");
-    printf("tvtype  0x%02X %-4s    reset  0x%02X %s    iQue?  0x%02X %s\n",
+    
+    if (is_ique) {
+        printf("hardware  iQue Player\n");
+        printf("\n");
+    } else {
+        printf("hardware  N64  tvtype  0x%02X %-4s  reset  0x%02X %s\n"),
         (unsigned)dmem_tvtype, tv_type_str(tv_type),
-        (unsigned)dmem_resettype, reset_type_str(dmem_resettype),
-        (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
-    printf("\n");
+        (unsigned)dmem_resettype, reset_type_str(dmem_resettype);
+        printf("\n");
+    }    
 
     printf("CP0 PRId    (reg 15)        0x%08lX\n", (unsigned long)prid);
     printf("  [15:8] ID                 0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
@@ -532,7 +537,7 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     }
     printf("\n");
 
-    printf("VR4300 bugs\n");
+    printf("VR4300 bug probes\n");
     for (size_t i = 0; i < NUM_PROBES; i++) {
         printf("  %-6s  %s", probes[i].tag, status_str(results[i].status));
         if (results[i].status == RESULT_FAIL && results[i].detail != 0) {
