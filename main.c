@@ -5,7 +5,7 @@
 #include <libdragon.h>
 
 /* -------------------------------------------------------------------------
- * Helpers
+ * Helpers (reserved for future use)
  * ---------------------------------------------------------------------- */
 
 /* -------------------------------------------------------------------------
@@ -454,7 +454,6 @@ static void report(uint8_t dmem_tvtype, int tv_type,
                    bool base_single_chip, bool expak_single_chip,
                    rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1,
                    rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
-
 {
     probe_result_t results[NUM_PROBES];
     for (size_t i = 0; i < NUM_PROBES; i++)
@@ -465,7 +464,7 @@ static void report(uint8_t dmem_tvtype, int tv_type,
         (unsigned)dmem_tvtype,      tv_type_str(tv_type),
         (unsigned)dmem_resettype,   reset_type_str(dmem_resettype),
         (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
-    printf("\n");    
+    printf("\n");
 
     printf("CP0 PRId    (reg 15)        0x%08lX\n", (unsigned long)prid);
     printf("  [15:8] ID                 0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
@@ -481,19 +480,22 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     printf("  IO version                0x%02X\n", (unsigned)(mi_version & 0xFF));
     printf("\n");
 
-    printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
-    printf("  base  %s\n", base_single_chip ? "1x36Mbit" : "2x18Mbit");
-    printf("  ID=0  manu=0x%04X (%s)  code=0x%04X\n",
-        rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
-    printf("  ID=2  manu=0x%04X (%s)  code=0x%04X\n",
-        rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
-
-    if (has_expak) {
-        printf("  expak %s\n", expak_single_chip ? "1x36Mbit" : "2x18Mbit");
-        printf("  ID=4  manu=0x%04X (%s)  code=0x%04X\n",
-            rdram2.manu, rdram_manu_str(rdram2.manu), rdram2.code);
-        printf("  ID=6  manu=0x%04X (%s)  code=0x%04X\n",
-            rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
+    if (is_ique) {
+        printf("DRAM   %uMB DDR SDRAM\n", has_expak ? 8 : 4);
+    } else {
+        printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
+        printf("  base  %s\n", base_single_chip ? "1x36Mbit" : "2x18Mbit");
+        printf("  ID=0  manu=0x%04X (%s)  code=0x%04X\n",
+            rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
+        printf("  ID=2  manu=0x%04X (%s)  code=0x%04X\n",
+            rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
+        if (has_expak) {
+            printf("  expak %s\n", expak_single_chip ? "1x36Mbit" : "2x18Mbit");
+            printf("  ID=4  manu=0x%04X (%s)  code=0x%04X\n",
+                rdram2.manu, rdram_manu_str(rdram2.manu), rdram2.code);
+            printf("  ID=6  manu=0x%04X (%s)  code=0x%04X\n",
+                rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
+        }
     }
     printf("\n");
 
@@ -505,8 +507,8 @@ static void report(uint8_t dmem_tvtype, int tv_type,
                 (unsigned long)(results[i].detail >> 32),
                 (unsigned long)(results[i].detail & 0xFFFFFFFF));
         }
-    printf("\n");
-    }    
+        printf("\n");
+    }
 }
 
 /* -------------------------------------------------------------------------
@@ -529,32 +531,35 @@ int main(void) {
 
     uint32_t prid               = read_prid();
     uint32_t fcr0               = read_fcr0();
-    
+
     uint32_t mi_version         = read_mi_version();
 
-    rdram_manufacturer_t rdram0 = read_rdram_manufacturer(0);
-    rdram_manufacturer_t rdram1 = read_rdram_manufacturer(2);
+    uint32_t memsize            = get_memory_size();
+    bool     has_expak          = (memsize > 4*1024*1024);
 
-    bool base_single_chip  = (rdram_read_reg(0, 1) == rdram_read_reg(2, 1));    
-    
-    uint32_t memsize = get_memory_size();
-    bool has_expak   = (memsize > 4*1024*1024);
-
+    rdram_manufacturer_t rdram0 = {0}, rdram1 = {0};
     rdram_manufacturer_t rdram2 = {0}, rdram3 = {0};
-
+    bool base_single_chip  = false;
     bool expak_single_chip = false;
-    if (has_expak) {
-        rdram2 = read_rdram_manufacturer(4);
-        rdram3 = read_rdram_manufacturer(6);
-        expak_single_chip = (rdram_read_reg(4, 1) == rdram_read_reg(6, 1));
+
+    if (!is_ique) {
+        rdram0 = read_rdram_manufacturer(0);
+        rdram1 = read_rdram_manufacturer(2);
+        base_single_chip = (rdram_read_reg(0, 1) == rdram_read_reg(2, 1));
+
+        if (has_expak) {
+            rdram2 = read_rdram_manufacturer(4);
+            rdram3 = read_rdram_manufacturer(6);
+            expak_single_chip = (rdram_read_reg(4, 1) == rdram_read_reg(6, 1));
+        }
+
+        dump_rdram_regs(0);
+        dump_rdram_regs(2);
+        if (has_expak) {
+            dump_rdram_regs(4);
+            dump_rdram_regs(6);
+        }
     }
-       
-    dump_rdram_regs(0);
-    dump_rdram_regs(2);
-    if (has_expak) {
-        dump_rdram_regs(4);
-        dump_rdram_regs(6);
-    }    
 
     report(dmem_tvtype, tv_type,
         dmem_resettype,
