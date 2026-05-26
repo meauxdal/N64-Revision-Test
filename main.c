@@ -15,7 +15,6 @@
 typedef enum {
     RESULT_PASS,
     RESULT_FAIL,
-    RESULT_STUB,
 } probe_status_t;
 
 typedef struct {
@@ -25,13 +24,11 @@ typedef struct {
 
 static probe_result_t PASS(void)       { return (probe_result_t){ RESULT_PASS, 0 }; }
 static probe_result_t FAIL(uint64_t d) { return (probe_result_t){ RESULT_FAIL, d }; }
-static probe_result_t STUB(void)       { return (probe_result_t){ RESULT_STUB, 0 }; }
 
 static const char *status_str(probe_status_t s) {
     switch (s) {
         case RESULT_PASS: return "PASS";
         case RESULT_FAIL: return "FAIL";
-        case RESULT_STUB: return "STUB";__attribute__((unused));
     }
     return "????";
 }
