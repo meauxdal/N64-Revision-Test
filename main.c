@@ -463,26 +463,26 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     for (size_t i = 0; i < NUM_PROBES; i++)
         results[i] = probes[i].fn();
 
-    printf("================ n64-revision-test ================\n");
+    printf("====================== n64-revision-test ======================\n");
     printf("tv type     (0xA4000009)    0x%02X  %s\n",
         (unsigned)dmem_tvtype, tv_type_str(tv_type));
     printf("iQue?       (0xA400000B)    0x%02X  %s\n",
         (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
-//    printf("\n");
+    printf("\n");
 
     printf("CP0 PRId    (reg 15)        0x%08lX\n", (unsigned long)prid);
     printf("  [15:8] ID                 0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n", (unsigned)(prid >> 0) & 0xFF);
-//    printf("\n");
+    printf("\n");
 
     printf("CP1 FCR0    (reg 0)         0x%08lX\n", (unsigned long)fcr0);
     printf("  [15:8] implementation     0x%02X\n", (unsigned)(fcr0 >> 8) & 0xFF);
     printf("  [7:0]  revision           0x%02X\n", (unsigned)(fcr0 >> 0) & 0xFF);
-//    printf("\n");
+    printf("\n");
 
     printf("MI_VERSION  (0xA4300004)    0x%08lX\n", (unsigned long)mi_version);
     printf("  IO version                0x%02X\n", (unsigned)(mi_version & 0xFF));
-//    printf("\n");
+    printf("\n");
 
     printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
     printf("  base  %s\n", base_single_chip ? "1x36Mbit" : "2x18Mbit");
@@ -498,7 +498,7 @@ static void report(uint8_t dmem_tvtype, int tv_type,
         printf("  ID=6  manu=0x%04X (%s)  code=0x%04X\n",
             rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
     }
-//    printf("\n");
+    printf("\n");
 
     printf("VR4300 bugs\n");
     for (size_t i = 0; i < NUM_PROBES; i++) {
@@ -508,7 +508,8 @@ static void report(uint8_t dmem_tvtype, int tv_type,
                 (unsigned long)(results[i].detail >> 32),
                 (unsigned long)(results[i].detail & 0xFFFFFFFF));
         }
-    }
+    printf("\n")
+    }    
 }
 
 /* -------------------------------------------------------------------------
