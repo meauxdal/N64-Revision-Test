@@ -31,13 +31,13 @@ static const char *status_str(probe_status_t s) {
     switch (s) {
         case RESULT_PASS: return "PASS";
         case RESULT_FAIL: return "FAIL";
-        case RESULT_STUB: return "STUB"__attribute__((unused));
+        case RESULT_STUB: return "STUB";__attribute__((unused));
     }
     return "????";
 }
 
 /* -------------------------------------------------------------------------
- * tv type / reset type / console type
+ * TV type / reset type / console type
  *
  * libdragon caches boot information from RSP DMEM during startup:
  *
@@ -107,7 +107,7 @@ static uint32_t read_mi_version(void) {
 }
 
 /* -------------------------------------------------------------------------
- * RDRAM manufacturer
+ * RDRAM register access
  *
  * RDRAM_REG_DEVICE_MANUFACTURER (reg 9) at chip 0.
  * Base: 0xA3F00000, stride shift 8 (RI v2), reg 9 is odd so MI upper
@@ -155,6 +155,14 @@ static const char *rdram_manu_str(uint16_t manu) {
     }
 }
 
+static uint32_t rdram_read_reg(int chip_id, int reg)
+{
+    if (reg & 1) *MI_MODE_REG = MI_WMODE_SET_UPPER;
+    uint32_t raw = RDRAM_REGS[(chip_id << 8) + reg];
+    if (reg & 1) *MI_MODE_REG = MI_WMODE_CLR_UPPER;
+    return byteswap32(raw);
+}
+
 static rdram_manufacturer_t read_rdram_manufacturer(int chip_id) {
     uint32_t value = rdram_read_reg(chip_id, 9);
     return (rdram_manufacturer_t){
@@ -164,16 +172,8 @@ static rdram_manufacturer_t read_rdram_manufacturer(int chip_id) {
 }
 
 /* -------------------------------------------------------------------------
- * RDRAM register access
+ *  debugf RDRAM register dump
  * ---------------------------------------------------------------------- */
-
-static uint32_t rdram_read_reg(int chip_id, int reg)
-{
-    if (reg & 1) *MI_MODE_REG = MI_WMODE_SET_UPPER;
-    uint32_t raw = RDRAM_REGS[(chip_id << 8) + reg];
-    if (reg & 1) *MI_MODE_REG = MI_WMODE_CLR_UPPER;
-    return byteswap32(raw);
-}
 
 static void dump_rdram_regs(int chip_id)
 {
