@@ -491,13 +491,12 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     
     if (is_ique) {
         printf("hardware  iQue Player\n");
-        printf("\n");
     } else {
-        printf("hardware  N64  tvtype  0x%02X %-4s  reset  0x%02X %s\n"),
-        (unsigned)dmem_tvtype, tv_type_str(tv_type),
-        (unsigned)dmem_resettype, reset_type_str(dmem_resettype);
-        printf("\n");
-    }    
+        printf("hardware  N64  tvtype  0x%02X %-4s  reset  0x%02X %s\n",
+            (unsigned)dmem_tvtype, tv_type_str(tv_type),
+            (unsigned)dmem_resettype, reset_type_str(dmem_resettype));
+    }
+    printf("\n");
 
     printf("CP0 PRId    (reg 15)        0x%08lX\n", (unsigned long)prid);
     printf("  [15:8] ID                 0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
