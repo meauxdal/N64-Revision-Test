@@ -490,9 +490,9 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     printf("====================== N64-Revision-Test ======================\n");
     
     if (is_ique) {
-        printf("consoletype: iQue Player\n");
+        printf("console: iQue Player\n");
     } else {
-        printf("consoletype: N64, resettype: 0x%02X %s, tvtype: 0x%02X %-4s\n",
+        printf("console: N64,  reset type: 0x%02X %s,  tv type: 0x%02X %-4s\n",
             (unsigned)dmem_resettype, reset_type_str(dmem_resettype),
             (unsigned)dmem_tvtype, tv_type_str(tv_type));            
     }
