@@ -61,8 +61,20 @@ static uint8_t read_dmem_tvtype(void) {
     return *((volatile uint8_t *)0xA4000009);
 }
 
+static uint8_t read_dmem_resettype(void) {
+    return *((volatile uint8_t *)0xA400000A);
+}
+
 static uint8_t read_dmem_consoletype(void) {
     return *((volatile uint8_t *)0xA400000B);
+}
+
+static const char *reset_type_str(uint8_t r) {
+    switch (r) {
+        case 0: return "cold";
+        case 1: return "warm";
+    }
+    return "unknown";
 }
 
 static const char *tv_type_str(int t) {
@@ -464,10 +476,11 @@ static void report(uint8_t dmem_tvtype, int tv_type,
         results[i] = probes[i].fn();
 
     printf("====================== n64-revision-test ======================\n");
-    printf("tvtype  0x%02X %-4s    iQue?  0x%02X %s\n",
-        (unsigned)dmem_tvtype,     tv_type_str(tv_type),
-        (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
-    printf("\n");
+    printf("tvtype  0x%02X %-4s    reset  0x%02X %s    iQue?  0x%02X %s\n",
+        (unsigned)dmem_tvtype,      tv_type_str(tv_type),
+        (unsigned)dmem_consoletype, is_ique ? "yes" : "no",
+        (unsigned)dmem_resettype,   reset_type_str(dmem_resettype));
+    printf("\n");    
 
     printf("CP0 PRId    (reg 15)        0x%08lX\n", (unsigned long)prid);
     printf("  [15:8] ID                 0x%02X\n", (unsigned)(prid >> 8) & 0xFF);
@@ -525,7 +538,7 @@ int main(void) {
 
     uint8_t  dmem_tvtype        = read_dmem_tvtype();
     int      tv_type            = get_tv_type();
-    
+    uint8_t  dmem_resettype     = read_dmem_resettype();
     uint8_t  dmem_consoletype   = read_dmem_consoletype();
     bool     is_ique            = sys_bbplayer();
 
