@@ -508,8 +508,8 @@ static void report(uint8_t dmem_tvtype, int tv_type,
                 (unsigned long)(results[i].detail >> 32),
                 (unsigned long)(results[i].detail & 0xFFFFFFFF));
         }
-    printf("\n")
-    }    
+    }
+    printf("\n");
 }
 
 /* -------------------------------------------------------------------------
