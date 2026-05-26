@@ -464,7 +464,7 @@ static void report(uint8_t dmem_tvtype, int tv_type,
         results[i] = probes[i].fn();
 
     printf("====================== n64-revision-test ======================\n");
-    printf("region  0x%02X %-4s    iQue?  0x%02X %s\n",
+    printf("tvtype  0x%02X %-4s    iQue?  0x%02X %s\n",
         (unsigned)dmem_tvtype,     tv_type_str(tv_type),
         (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
     printf("\n");
