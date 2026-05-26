@@ -485,15 +485,15 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     } else {
         printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
         printf("  base  %s\n", base_single_chip ? "1x36Mbit" : "2x18Mbit");
-        printf("  ID=0  manu=0x%04X (%s)  code=0x%04X\n",
+        printf("    ID=0  manu=0x%04X (%s)  code=0x%04X\n",
             rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
-        printf("  ID=2  manu=0x%04X (%s)  code=0x%04X\n",
+        printf("    ID=2  manu=0x%04X (%s)  code=0x%04X\n",
             rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
         if (has_expak) {
             printf("  expak %s\n", expak_single_chip ? "1x36Mbit" : "2x18Mbit");
-            printf("  ID=4  manu=0x%04X (%s)  code=0x%04X\n",
+            printf("    ID=4  manu=0x%04X (%s)  code=0x%04X\n",
                 rdram2.manu, rdram_manu_str(rdram2.manu), rdram2.code);
-            printf("  ID=6  manu=0x%04X (%s)  code=0x%04X\n",
+            printf("    ID=6  manu=0x%04X (%s)  code=0x%04X\n",
                 rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
         }
     }
