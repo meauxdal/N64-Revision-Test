@@ -5,11 +5,7 @@
 #include <libdragon.h>
 
 /* -------------------------------------------------------------------------
- * Helpers (reserved for future use)
- * ---------------------------------------------------------------------- */
-
-/* -------------------------------------------------------------------------
- * Probe result type
+ * Helpers
  * ---------------------------------------------------------------------- */
 
 typedef enum {
@@ -94,9 +90,6 @@ static uint32_t read_fcr0(void) {
 
 /* -------------------------------------------------------------------------
  * MI_VERSION
- *
- * 0xA4300004. Bits [7:0] = IO version.
- * 0x02 = retail RCP, 0x03 = Analogue 3D.
  * ---------------------------------------------------------------------- */
 
 static uint32_t read_mi_version(void) {
@@ -104,21 +97,7 @@ static uint32_t read_mi_version(void) {
 }
 
 /* -------------------------------------------------------------------------
- * RDRAM register access
- *
- * RDRAM_REG_DEVICE_MANUFACTURER (reg 9) at chip 0.
- * Base: 0xA3F00000, stride shift 8 (RI v2), reg 9 is odd so MI upper
- * mode is required to access it (shifts 32-bit transfer to upper bus half).
- *
- * Address: 0xA3F00000 + (0 << 8 + 9) * 4 = 0xA3F00024
- *
- * Registers are physically little-endian; byteswap after reading.
- * bits [31:16] = manufacturer code, bits [15:0] = product code.
- *
- * Known manufacturer codes:
- *   0x0002 Toshiba   0x0003 Fujitsu   0x0005 NEC
- *   0x0007 Hitachi   0x0009 OKI       0x000A LG
- *   0x0010 Samsung   0x0013 Hyundai
+ * RDRAM register access (N64 only)
  * ---------------------------------------------------------------------- */
 
 #define MI_MODE_REG         ((volatile uint32_t *)0xA4300000)
@@ -175,7 +154,6 @@ static rdram_manufacturer_t read_rdram_manufacturer(int chip_id) {
 static void dump_rdram_regs(int chip_id)
 {
     uint32_t dt = rdram_read_reg(chip_id, 0);
-
     debugf("RDRAM chip_id=%d\n", chip_id);
     debugf("  r00 DeviceType         0x%08lX"
            "  ColBits=%u BankBits=%u RowBits=%u Bn=%u En=%u Ver=%u Type=%u\n",
@@ -197,6 +175,52 @@ static void dump_rdram_regs(int chip_id)
     debugf("  r08 AddressSelect      0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 8));
     debugf("  r09 DeviceManufacturer 0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 9));
     debugf("\n");
+}
+
+/* -------------------------------------------------------------------------
+ * iQue NAND Support
+ * ---------------------------------------------------------------------- */
+
+#define PI_BB_NAND_CTRL ((volatile uint32_t*)0xA4600048)
+#define PI_BB_NAND_CFG  ((volatile uint32_t*)0xA460004C)
+#define PI_BB_NAND_ADDR ((volatile uint32_t*)0xA4600070)
+#define PI_BB_BUFFER_0  ((volatile uint32_t*)0xA4610000)
+
+#define PI_BB_NAND_CTRL_BUSY (1 << 31)
+#define PI_BB_WNAND_CTRL_CMD_SHIFT 16
+#define PI_BB_WNAND_CTRL_BUF(n) ((n) << 14)
+#define PI_BB_WNAND_CTRL_EXECUTE (1 << 31)
+
+#define NAND_CMD_READID \
+    ((0x90 << PI_BB_WNAND_CTRL_CMD_SHIFT) | (1<<28) | (1<<24))
+
+static void nand_wait(void) {
+    while (*PI_BB_NAND_CTRL & PI_BB_NAND_CTRL_BUSY) {}
+}
+
+static void nand_read_id(uint8_t id[4]) {
+    *PI_BB_NAND_CFG = 0x753E3EFF;
+    *PI_BB_NAND_ADDR = 0;
+    *PI_BB_NAND_CTRL = PI_BB_WNAND_CTRL_EXECUTE | PI_BB_WNAND_CTRL_BUF(0) |
+                       NAND_CMD_READID | 4;
+    nand_wait();
+
+    uint32_t id32 = io_read((uint32_t)PI_BB_BUFFER_0);
+    id[0] = (id32 >> 24) & 0xFF;
+    id[1] = (id32 >> 16) & 0xFF;
+    id[2] = (id32 >>  8) & 0xFF;
+    id[3] = id32 & 0xFF;
+}
+
+static const char *nand_name_from_id(const uint8_t id[4]) {
+    uint16_t id16 = (id[0] << 8) | id[1];
+    switch (id16) {
+        case 0xEC76: return "Samsung K9F1208U0M";
+        case 0x2076: return "ST NAND512W3A";
+        case 0x9876: return "Toshiba TC58512FT";
+        case 0xEC79: return "Samsung K9K1G08U0B";
+        default:     return "Unknown NAND";
+    }
 }
 
 /* -------------------------------------------------------------------------
@@ -449,11 +473,15 @@ static const probe_entry_t probes[] = {
 static void report(uint8_t dmem_tvtype, int tv_type,
                    uint8_t dmem_resettype,
                    uint8_t dmem_consoletype, bool is_ique,
-                   uint32_t prid, uint32_t fcr0,
-                   uint32_t mi_version, bool has_expak,
+                   uint32_t prid,
+                   uint32_t fcr0,
+                   uint32_t mi_version,
+                   bool has_expak,
                    bool base_single_chip, bool expak_single_chip,
-                   rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1,
-                   rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
+                   rdram_manufacturer_t rdram0,
+                   rdram_manufacturer_t rdram1,
+                   rdram_manufacturer_t rdram2,
+                   rdram_manufacturer_t rdram3)
 {
     probe_result_t results[NUM_PROBES];
     for (size_t i = 0; i < NUM_PROBES; i++)
@@ -461,8 +489,8 @@ static void report(uint8_t dmem_tvtype, int tv_type,
 
     printf("====================== n64-revision-test ======================\n");
     printf("tvtype  0x%02X %-4s    reset  0x%02X %s    iQue?  0x%02X %s\n",
-        (unsigned)dmem_tvtype,      tv_type_str(tv_type),
-        (unsigned)dmem_resettype,   reset_type_str(dmem_resettype),
+        (unsigned)dmem_tvtype, tv_type_str(tv_type),
+        (unsigned)dmem_resettype, reset_type_str(dmem_resettype),
         (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
     printf("\n");
 
@@ -481,7 +509,12 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     printf("\n");
 
     if (is_ique) {
+        uint8_t nand_id[4] = {0};
+        nand_read_id(nand_id);
         printf("DRAM   16MB DDR SDRAM\n");
+        printf("NAND   %s\n", nand_name_from_id(nand_id));
+        printf("NAND ID: %02X %02X %02X %02X\n",
+               nand_id[0], nand_id[1], nand_id[2], nand_id[3]);
     } else {
         printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
         printf("  base  %s\n", base_single_chip ? "1x36Mbit" : "2x18Mbit");
@@ -525,22 +558,24 @@ int main(void) {
 
     uint8_t  dmem_tvtype        = read_dmem_tvtype();
     int      tv_type            = get_tv_type();
+
     uint8_t  dmem_resettype     = read_dmem_resettype();
+
     uint8_t  dmem_consoletype   = read_dmem_consoletype();
     bool     is_ique            = sys_bbplayer();
 
     uint32_t prid               = read_prid();
+
     uint32_t fcr0               = read_fcr0();
 
     uint32_t mi_version         = read_mi_version();
 
     uint32_t memsize            = get_memory_size();
     bool     has_expak          = (memsize > 4*1024*1024);
-
     rdram_manufacturer_t rdram0 = {0}, rdram1 = {0};
     rdram_manufacturer_t rdram2 = {0}, rdram3 = {0};
-    bool base_single_chip  = false;
-    bool expak_single_chip = false;
+    bool base_single_chip       = false;
+    bool expak_single_chip      = false;
 
     if (!is_ique) {
         rdram0 = read_rdram_manufacturer(0);
@@ -561,14 +596,15 @@ int main(void) {
         }
     }
 
-    report(dmem_tvtype, tv_type,
-        dmem_resettype,
-        dmem_consoletype, is_ique,
-        prid, fcr0,
-        mi_version, has_expak,
-        base_single_chip, expak_single_chip,
-        rdram0, rdram1,
-        rdram2, rdram3);
+    report(dmem_tvtype, tv_type, 
+           dmem_resettype, 
+           dmem_consoletype, is_ique,
+           prid,
+           fcr0,
+           mi_version, 
+           has_expak,
+           base_single_chip, expak_single_chip,
+           rdram0, rdram1, rdram2, rdram3);
 
     console_render();
 
