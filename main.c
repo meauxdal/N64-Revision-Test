@@ -463,6 +463,7 @@ static const probe_entry_t probes[] = {
  * ---------------------------------------------------------------------- */
 
 static void report(uint8_t dmem_tvtype, int tv_type,
+                   uint8_t dmem_resettype,
                    uint8_t dmem_consoletype, bool is_ique,
                    uint32_t prid, uint32_t fcr0,
                    uint32_t mi_version, bool has_expak,
@@ -478,8 +479,8 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     printf("====================== n64-revision-test ======================\n");
     printf("tvtype  0x%02X %-4s    reset  0x%02X %s    iQue?  0x%02X %s\n",
         (unsigned)dmem_tvtype,      tv_type_str(tv_type),
-        (unsigned)dmem_consoletype, is_ique ? "yes" : "no",
-        (unsigned)dmem_resettype,   reset_type_str(dmem_resettype));
+        (unsigned)dmem_resettype,   reset_type_str(dmem_resettype),
+        (unsigned)dmem_consoletype, is_ique ? "yes" : "no");
     printf("\n");    
 
     printf("CP0 PRId    (reg 15)        0x%08lX\n", (unsigned long)prid);
@@ -572,6 +573,7 @@ int main(void) {
     }    
 
     report(dmem_tvtype, tv_type,
+        dmem_resettype,
         dmem_consoletype, is_ique,
         prid, fcr0,
         mi_version, has_expak,
