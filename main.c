@@ -515,12 +515,14 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     if (is_ique) {
         uint8_t nand_id[4] = {0};
         nand_read_id(nand_id);
+
         printf("DRAM   16MB DDR SDRAM\n");
-        printf("\n")
+        printf("\n");
 
         printf("NAND   %s\n", nand_name_from_id(nand_id));
         printf("  NAND ID: %02X %02X %02X %02X\n",
-               nand_id[0], nand_id[1], nand_id[2], nand_id[3]);
+            nand_id[0], nand_id[1], nand_id[2], nand_id[3]);
+
     } else {
         printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
         printf("  base  %s\n", base_single_chip ? "1x36Mbit" : "2x18Mbit");
@@ -528,6 +530,7 @@ static void report(uint8_t dmem_tvtype, int tv_type,
             rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
         printf("    ID=2  manu=0x%04X (%s)  code=0x%04X\n",
             rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
+            
         if (has_expak) {
             printf("  expak %s\n", expak_single_chip ? "1x36Mbit" : "2x18Mbit");
             printf("    ID=4  manu=0x%04X (%s)  code=0x%04X\n",
