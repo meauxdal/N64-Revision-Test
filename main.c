@@ -162,6 +162,8 @@ static rdram_manufacturer_t read_rdram_manufacturer(int chip_id) {
     };
 }
 
+
+
 /* -------------------------------------------------------------------------
  * RDRAM register dump
  * ---------------------------------------------------------------------- */
@@ -198,6 +200,7 @@ static void dump_rdram_regs(int chip_id)
     debugf("  r07 MinInterval        0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 7));
     debugf("  r08 AddressSelect      0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 8));
     debugf("  r09 DeviceManufacturer 0x%08lX\n", (unsigned long)rdram_read_reg(chip_id, 9));
+    debugf("\n");
 }
 
 /* -------------------------------------------------------------------------
@@ -451,6 +454,7 @@ static void report(uint8_t dmem_tvtype, int tv_type,
                    uint8_t dmem_consoletype, bool is_ique,
                    uint32_t prid, uint32_t fcr0,
                    uint32_t mi_version, bool has_expak,
+                   bool base_single_chip, bool expak_single_chip,
                    rdram_manufacturer_t rdram0, rdram_manufacturer_t rdram1,
                    rdram_manufacturer_t rdram2, rdram_manufacturer_t rdram3)
 
@@ -480,15 +484,16 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     printf("  IO version                0x%02X\n", (unsigned)(mi_version & 0xFF));
     printf("\n");
 
-    printf("RDRAM\n");
+    printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
+    printf("  base  %s\n", base_single_chip ? "1x36Mbit" : "2x18Mbit");
     printf("  ID=0  manu=0x%04X (%s)  code=0x%04X\n",
         rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
     printf("  ID=2  manu=0x%04X (%s)  code=0x%04X\n",
         rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
-    if (has_expak)
+    if (has_expak) {
+        printf("  expak %s\n", expak_single_chip ? "1x36Mbit" : "2x18Mbit");
         printf("  ID=4  manu=0x%04X (%s)  code=0x%04X\n",
             rdram2.manu, rdram_manu_str(rdram2.manu), rdram2.code);
-    if (has_expak)
         printf("  ID=6  manu=0x%04X (%s)  code=0x%04X\n",
             rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
     printf("\n");
@@ -531,6 +536,8 @@ int main(void) {
     rdram_manufacturer_t rdram0 = read_rdram_manufacturer(0);
     rdram_manufacturer_t rdram1 = read_rdram_manufacturer(2);
 
+    bool base_single_chip  = (rdram_read_reg(0, 1) == rdram_read_reg(2, 1));    
+    
     uint32_t memsize = get_memory_size();
     bool has_expak   = (memsize > 4*1024*1024);
 
@@ -538,8 +545,10 @@ int main(void) {
     if (has_expak) {
         rdram2 = read_rdram_manufacturer(4);
         rdram3 = read_rdram_manufacturer(6);
-    }     
-    
+
+    rdram_manufacturer_t rdram1 = read_rdram_manufacturer(2);
+    } 
+       
     dump_rdram_regs(0);
     dump_rdram_regs(2);
     if (has_expak) {
@@ -548,9 +557,10 @@ int main(void) {
     }    
 
     report(dmem_tvtype, tv_type,
-        dmem_consoletype, is_ique, 
+        dmem_consoletype, is_ique,
         prid, fcr0,
         mi_version, has_expak,
+        base_single_chip, expak_single_chip,
         rdram0, rdram1,
         rdram2, rdram3);
 
