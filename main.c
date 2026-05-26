@@ -516,8 +516,10 @@ static void report(uint8_t dmem_tvtype, int tv_type,
         uint8_t nand_id[4] = {0};
         nand_read_id(nand_id);
         printf("DRAM   16MB DDR SDRAM\n");
+        printf("\n")
+
         printf("NAND   %s\n", nand_name_from_id(nand_id));
-        printf("NAND ID: %02X %02X %02X %02X\n",
+        printf("  NAND ID: %02X %02X %02X %02X\n",
                nand_id[0], nand_id[1], nand_id[2], nand_id[3]);
     } else {
         printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
