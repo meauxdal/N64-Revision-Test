@@ -481,7 +481,7 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     printf("\n");
 
     if (is_ique) {
-        printf("DRAM   %uMB DDR SDRAM\n", has_expak ? 8 : 4);
+        printf("DRAM   16MB DDR SDRAM\n");
     } else {
         printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
         printf("  base  %s\n", base_single_chip ? "1x36Mbit" : "2x18Mbit");
