@@ -5,7 +5,7 @@
 #include <libdragon.h>
 
 /* -------------------------------------------------------------------------
- * Helpers
+ * Result types
  * ---------------------------------------------------------------------- */
 
 typedef enum {
@@ -15,7 +15,7 @@ typedef enum {
 
 typedef struct {
     probe_status_t status;
-    uint64_t detail;   /* optional; 0 if unused */
+    uint64_t       detail;   /* 0 if unused */
 } probe_result_t;
 
 static probe_result_t PASS(void)       { return (probe_result_t){ RESULT_PASS, 0 }; }
@@ -30,32 +30,10 @@ static const char *status_str(probe_status_t s) {
 }
 
 /* -------------------------------------------------------------------------
- * TV type / reset type / console type
- *
- * libdragon caches boot information from RSP DMEM during startup:
- *
- *   0xA4000009 -> __boot_tvtype      -> get_tv_type()
- *   0xA400000A -> __boot_resettype
- *   0xA400000B -> __boot_consoletype -> sys_bbplayer()
- *
- * These bytes originate from the IPL boot process. The corresponding
- * PIF-RAM boot word at 0xBFC007E4 appears to be cleared before main()
- * executes, so the preserved DMEM copies are used instead.
+ * String helpers
  * ---------------------------------------------------------------------- */
 
-static uint8_t read_dmem_tvtype(void) {
-    return *((volatile uint8_t *)0xA4000009);
-}
-
-static uint8_t read_dmem_resettype(void) {
-    return *((volatile uint8_t *)0xA400000A);
-}
-
-static uint8_t read_dmem_consoletype(void) {
-    return *((volatile uint8_t *)0xA400000B);
-}
-
-static const char *tv_type_str(int t) {
+static const char *tv_type_str(tv_type_t t) {
     switch (t) {
         case TV_PAL:  return "PAL";
         case TV_NTSC: return "NTSC";
@@ -64,10 +42,10 @@ static const char *tv_type_str(int t) {
     return "unknown";
 }
 
-static const char *reset_type_str(uint8_t r) {
+static const char *reset_type_str(reset_type_t r) {
     switch (r) {
-        case 0: return "cold";
-        case 1: return "warm";
+        case RESET_COLD: return "cold";
+        case RESET_WARM: return "warm";
     }
     return "unknown";
 }
@@ -88,16 +66,12 @@ static uint32_t read_fcr0(void) {
     return v;
 }
 
-/* -------------------------------------------------------------------------
- * MI_VERSION
- * ---------------------------------------------------------------------- */
-
 static uint32_t read_mi_version(void) {
     return *((volatile uint32_t *)0xA4300004);
 }
 
 /* -------------------------------------------------------------------------
- * RDRAM register access (N64 only)
+ * RDRAM register access
  * ---------------------------------------------------------------------- */
 
 #define MI_MODE_REG         ((volatile uint32_t *)0xA4300000)
@@ -131,8 +105,7 @@ static const char *rdram_manu_str(uint16_t manu) {
     }
 }
 
-static uint32_t rdram_read_reg(int chip_id, int reg)
-{
+static uint32_t rdram_read_reg(int chip_id, int reg) {
     if (reg & 1) *MI_MODE_REG = MI_WMODE_SET_UPPER;
     uint32_t raw = RDRAM_REGS[(chip_id << 8) + reg];
     if (reg & 1) *MI_MODE_REG = MI_WMODE_CLR_UPPER;
@@ -147,12 +120,7 @@ static rdram_manufacturer_t read_rdram_manufacturer(int chip_id) {
     };
 }
 
-/* -------------------------------------------------------------------------
- *  debugf RDRAM register dump
- * ---------------------------------------------------------------------- */
-
-static void dump_rdram_regs(int chip_id)
-{
+static void dump_rdram_regs(int chip_id) {
     uint32_t dt = rdram_read_reg(chip_id, 0);
     debugf("RDRAM chip_id=%d\n", chip_id);
     debugf("  r00 DeviceType         0x%08lX"
@@ -178,7 +146,7 @@ static void dump_rdram_regs(int chip_id)
 }
 
 /* -------------------------------------------------------------------------
- * iQue NAND Support
+ * iQue NAND support
  * ---------------------------------------------------------------------- */
 
 #define PI_BB_NAND_CTRL ((volatile uint32_t*)0xA4600048)
@@ -186,10 +154,10 @@ static void dump_rdram_regs(int chip_id)
 #define PI_BB_NAND_ADDR ((volatile uint32_t*)0xA4600070)
 #define PI_BB_BUFFER_0  ((volatile uint32_t*)0xA4610000)
 
-#define PI_BB_NAND_CTRL_BUSY (1 << 31)
-#define PI_BB_WNAND_CTRL_CMD_SHIFT 16
-#define PI_BB_WNAND_CTRL_BUF(n) ((n) << 14)
-#define PI_BB_WNAND_CTRL_EXECUTE (1 << 31)
+#define PI_BB_NAND_CTRL_BUSY        (1 << 31)
+#define PI_BB_WNAND_CTRL_CMD_SHIFT  16
+#define PI_BB_WNAND_CTRL_BUF(n)     ((n) << 14)
+#define PI_BB_WNAND_CTRL_EXECUTE    (1 << 31)
 
 #define NAND_CMD_READID \
     ((0x90 << PI_BB_WNAND_CTRL_CMD_SHIFT) | (1<<28) | (1<<24))
@@ -246,12 +214,12 @@ static probe_result_t probe_mulmul(void) {
      *
      * PASS = results match (bug absent).
      * FAIL = results differ (bug fires). Detail = broken:working.
-     * 
+     *
      * Original ctest.z64 mulmul test by HailtoDodongo
      * Run on hardware known to have the bug by Buu42
      * Known-bad input pattern provided from log by Buu42:
      * (7F800000 * 37BAD25F, 38978B5D * 0C50A394): 05770421 != 05770422
-     * 
+     *
      * test fixed by Jhynjhiruu
      */
     uint32_t bits_1 = 0x7F800000;
@@ -466,35 +434,39 @@ static const probe_entry_t probes[] = {
 
 #define NUM_PROBES (sizeof(probes) / sizeof(probes[0]))
 
+static void run_probes(probe_result_t *out) {
+    for (size_t i = 0; i < NUM_PROBES; i++)
+        out[i] = probes[i].fn();
+}
+
 /* -------------------------------------------------------------------------
- * Reporting
+ * Rendering
+ *
+ * rdram[0..1] = base chips (chip IDs 0, 2)
+ * rdram[2..3] = expak chips (chip IDs 4, 6); only valid when has_expak
+ * nand_id     = only valid when is_ique
  * ---------------------------------------------------------------------- */
 
-static void report(uint8_t dmem_tvtype, int tv_type,
-                   uint8_t dmem_resettype,
-                   uint8_t dmem_consoletype, bool is_ique,
+static void report(bool is_ique,
+                   tv_type_t tv_type,
+                   reset_type_t reset_type,
                    uint32_t prid,
                    uint32_t fcr0,
                    uint32_t mi_version,
                    bool has_expak,
-                   bool base_single_chip, bool expak_single_chip,
-                   rdram_manufacturer_t rdram0,
-                   rdram_manufacturer_t rdram1,
-                   rdram_manufacturer_t rdram2,
-                   rdram_manufacturer_t rdram3)
+                   bool base_single_chip,
+                   bool expak_single_chip,
+                   rdram_manufacturer_t rdram[4],
+                   uint8_t nand_id[4],
+                   const probe_result_t *results)
 {
-    probe_result_t results[NUM_PROBES];
-    for (size_t i = 0; i < NUM_PROBES; i++)
-        results[i] = probes[i].fn();
-
     printf("====================== N64-Revision-Test ======================\n");
-    
+
     if (is_ique) {
         printf("console: iQue Player\n");
     } else {
-        printf("console: N64,  reset type: 0x%02X %s,  tv type: 0x%02X %-4s\n",
-            (unsigned)dmem_resettype, reset_type_str(dmem_resettype),
-            (unsigned)dmem_tvtype, tv_type_str(tv_type));            
+        printf("console: N64,  reset: %s,  tv: %s\n",
+               reset_type_str(reset_type), tv_type_str(tv_type));
     }
     printf("\n");
 
@@ -513,30 +485,25 @@ static void report(uint8_t dmem_tvtype, int tv_type,
     printf("\n");
 
     if (is_ique) {
-        uint8_t nand_id[4] = {0};
-        nand_read_id(nand_id);
-
         printf("DRAM   16MB DDR SDRAM\n");
         printf("\n");
-
         printf("NAND   %s\n", nand_name_from_id(nand_id));
         printf("  NAND ID: %02X %02X %02X %02X\n",
-            nand_id[0], nand_id[1], nand_id[2], nand_id[3]);
-
+               nand_id[0], nand_id[1], nand_id[2], nand_id[3]);
     } else {
         printf("RDRAM  %uMB\n", has_expak ? 8 : 4);
         printf("  base  %s\n", base_single_chip ? "1x36Mbit" : "2x18Mbit");
         printf("    ID=0  manu=0x%04X (%s)  code=0x%04X\n",
-            rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
+               rdram[0].manu, rdram_manu_str(rdram[0].manu), rdram[0].code);
         printf("    ID=2  manu=0x%04X (%s)  code=0x%04X\n",
-            rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
-            
+               rdram[1].manu, rdram_manu_str(rdram[1].manu), rdram[1].code);
+
         if (has_expak) {
             printf("  expak %s\n", expak_single_chip ? "1x36Mbit" : "2x18Mbit");
             printf("    ID=4  manu=0x%04X (%s)  code=0x%04X\n",
-                rdram2.manu, rdram_manu_str(rdram2.manu), rdram2.code);
+                   rdram[2].manu, rdram_manu_str(rdram[2].manu), rdram[2].code);
             printf("    ID=6  manu=0x%04X (%s)  code=0x%04X\n",
-                rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
+                   rdram[3].manu, rdram_manu_str(rdram[3].manu), rdram[3].code);
         }
     }
     printf("\n");
@@ -546,8 +513,8 @@ static void report(uint8_t dmem_tvtype, int tv_type,
         printf("  %-6s  %s", probes[i].tag, status_str(results[i].status));
         if (results[i].status == RESULT_FAIL && results[i].detail != 0) {
             printf("  got=0x%08lX_%08lX",
-                (unsigned long)(results[i].detail >> 32),
-                (unsigned long)(results[i].detail & 0xFFFFFFFF));
+                   (unsigned long)(results[i].detail >> 32),
+                   (unsigned long)(results[i].detail & 0xFFFFFFFF));
         }
         printf("\n");
     }
@@ -565,55 +532,54 @@ int main(void) {
     console_set_render_mode(RENDER_MANUAL);
     console_clear();
 
-    uint8_t  dmem_tvtype        = read_dmem_tvtype();
-    int      tv_type            = get_tv_type();
+    /* --- Phase 1: collect --- */
 
-    uint8_t  dmem_resettype     = read_dmem_resettype();
+    bool         is_ique    = sys_bbplayer();
+    tv_type_t    tv_type    = get_tv_type();
+    reset_type_t reset_type = sys_reset_type();
 
-    uint8_t  dmem_consoletype   = read_dmem_consoletype();
-    bool     is_ique            = sys_bbplayer();
+    uint32_t prid       = read_prid();
+    uint32_t fcr0       = read_fcr0();
+    uint32_t mi_version = read_mi_version();
 
-    uint32_t prid               = read_prid();
+    bool has_expak = (get_memory_size() > 4 * 1024 * 1024);
 
-    uint32_t fcr0               = read_fcr0();
+    rdram_manufacturer_t rdram[4] = {0};
+    bool    base_single_chip  = false;
+    bool    expak_single_chip = false;
+    uint8_t nand_id[4]        = {0};
 
-    uint32_t mi_version         = read_mi_version();
-
-    uint32_t memsize            = get_memory_size();
-    bool     has_expak          = (memsize > 4*1024*1024);
-    rdram_manufacturer_t rdram0 = {0}, rdram1 = {0};
-    rdram_manufacturer_t rdram2 = {0}, rdram3 = {0};
-    bool base_single_chip       = false;
-    bool expak_single_chip      = false;
-
-    if (!is_ique) {
-        rdram0 = read_rdram_manufacturer(0);
-        rdram1 = read_rdram_manufacturer(2);
+    if (is_ique) {
+        nand_read_id(nand_id);
+    } else {
+        rdram[0] = read_rdram_manufacturer(0);
+        rdram[1] = read_rdram_manufacturer(2);
         base_single_chip = (rdram_read_reg(0, 1) == rdram_read_reg(2, 1));
-
-        if (has_expak) {
-            rdram2 = read_rdram_manufacturer(4);
-            rdram3 = read_rdram_manufacturer(6);
-            expak_single_chip = (rdram_read_reg(4, 1) == rdram_read_reg(6, 1));
-        }
 
         dump_rdram_regs(0);
         dump_rdram_regs(2);
+
         if (has_expak) {
+            rdram[2] = read_rdram_manufacturer(4);
+            rdram[3] = read_rdram_manufacturer(6);
+            expak_single_chip = (rdram_read_reg(4, 1) == rdram_read_reg(6, 1));
+
             dump_rdram_regs(4);
             dump_rdram_regs(6);
         }
     }
 
-    report(dmem_tvtype, tv_type, 
-           dmem_resettype, 
-           dmem_consoletype, is_ique,
-           prid,
-           fcr0,
-           mi_version, 
-           has_expak,
-           base_single_chip, expak_single_chip,
-           rdram0, rdram1, rdram2, rdram3);
+    /* --- Phase 2: probe --- */
+
+    probe_result_t results[NUM_PROBES];
+    run_probes(results);
+
+    /* --- Phase 3: render --- */
+
+    report(is_ique, tv_type, reset_type,
+           prid, fcr0, mi_version,
+           has_expak, base_single_chip, expak_single_chip,
+           rdram, nand_id, results);
 
     console_render();
 
