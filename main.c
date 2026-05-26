@@ -490,12 +490,14 @@ static void report(uint8_t dmem_tvtype, int tv_type,
         rdram0.manu, rdram_manu_str(rdram0.manu), rdram0.code);
     printf("  ID=2  manu=0x%04X (%s)  code=0x%04X\n",
         rdram1.manu, rdram_manu_str(rdram1.manu), rdram1.code);
+
     if (has_expak) {
         printf("  expak %s\n", expak_single_chip ? "1x36Mbit" : "2x18Mbit");
         printf("  ID=4  manu=0x%04X (%s)  code=0x%04X\n",
             rdram2.manu, rdram_manu_str(rdram2.manu), rdram2.code);
         printf("  ID=6  manu=0x%04X (%s)  code=0x%04X\n",
             rdram3.manu, rdram_manu_str(rdram3.manu), rdram3.code);
+    }
     printf("\n");
 
     printf("VR4300 bugs\n");
@@ -542,12 +544,13 @@ int main(void) {
     bool has_expak   = (memsize > 4*1024*1024);
 
     rdram_manufacturer_t rdram2 = {0}, rdram3 = {0};
+    
+    bool expak_single_chip = false;
     if (has_expak) {
         rdram2 = read_rdram_manufacturer(4);
         rdram3 = read_rdram_manufacturer(6);
-
-    rdram_manufacturer_t rdram1 = read_rdram_manufacturer(2);
-    } 
+        expak_single_chip = (rdram_read_reg(4, 1) == rdram_read_reg(6, 1));
+    }
        
     dump_rdram_regs(0);
     dump_rdram_regs(2);
