@@ -191,6 +191,17 @@ static const char *nand_name_from_id(const uint8_t id[4]) {
     }
 }
 
+static uint32_t nand_size_from_id(const uint8_t id[4]) {
+    uint16_t id16 = (id[0] << 8) | id[1];
+    switch (id16) {
+        case 0xEC76: return 64;
+        case 0x2076: return 64;
+        case 0x9876: return 64;
+        case 0xEC79: return 128;
+        default:     return 0;
+    }
+}
+
 /* -------------------------------------------------------------------------
  * BUG: mulmul — FP double-multiply hazard
  *
@@ -487,7 +498,11 @@ static void report(bool is_ique,
     if (is_ique) {
         printf("DRAM   16MB DDR SDRAM\n");
         printf("\n");
-        printf("NAND   %s\n", nand_name_from_id(nand_id));
+        uint32_t nand_size = nand_size_from_id(nand_id);
+        if (nand_size)
+            printf("NAND   %s  %luMB\n", nand_name_from_id(nand_id), (unsigned long)nand_size);
+        else
+            printf("NAND   %s  ?MB\n", nand_name_from_id(nand_id));
         printf("  NAND ID: %02X %02X %02X %02X\n",
                nand_id[0], nand_id[1], nand_id[2], nand_id[3]);
     } else {
