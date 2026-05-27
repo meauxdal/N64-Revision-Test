@@ -124,15 +124,6 @@ ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak).
 
 ---
 
-**adding a new probe**
-
-1. write a `probe_result_t probe_foo(void)` returning `PASS()`, `FAIL(detail)`, or `STUB()`
-2. add an entry to the `probes[]` table in `main()`
-
----
-
-**building**
-
 uses libdragon preview branch, pinned to `c60bfbfc2c44b86e3627b06640b0260b89788118`
 
 ```
