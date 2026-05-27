@@ -1,8 +1,39 @@
 [![Build N64 ROM](https://github.com/meauxdal/N64-Revision-Test/actions/workflows/build.yml/badge.svg)](https://github.com/meauxdal/N64-Revision-Test/actions/workflows/build.yml)
 
-## n64-revision-test
+## N64-Revision-Test 
 
-reads region, CPU/FPU identifiers, RCP version, RDRAM manufacturer, and probes for known VR4300 hardware bugs.
+this tool aims to aid in N64 hardware revision identification. bonus iQue Player compatibility.
+
+in terms of NTSC:  
+
+| period | identification                    | range                      |
+|--------|-----------------------------------|----------------------------|
+| early  | mulmul FAIL                       | NUS-CPU-01 to NUS-CPU-03   |
+| mid    | mulmul PASS + base 2x18Mbit RDRAM | NUS-CPU-03 to NUS-CPU-05-1 |
+| late   | base 1x36Mbit RDRAM               | NUS-CPU-06 to NUS-CPU-09-1 |
+
+information is printed to the screen directly (and to the debug output, which includes some additional RDRAM details when run on N64 hardware). 
+
+-----
+
+also:
+- reports PAL/NTSC/MPAL tvtype
+- detects cold/warm boot
+- detects 2x18Mbit (≤ NUS-CPU-05-1) vs 1x36Mbit RDRAM (≥ NUS-CPU-06) configurations via DeviceID + manufacturer + mfr. code
+- detects Expansion Pak (expak 1x36Mbit RDRAM) + manufacturer + mfr. code
+- debugf additionally dumps all potentially identifying RDRAM registers (this is a bit overkill for now but helps corroborate interpreted results)
+- (iQue Player-only) detects NAND ID (manufacturer + part no. + size) 
+
+---
+
+tested on NTSC, MPAL, iQue. awaiting PAL testing. 
+
+---
+
+mulmul probe confirmed to FAIL on 3 units known to be affected - all other units PASS. all tests give expected results on hardware.
+
+NUS-CPU-03 (mulmul PASS) example output:  
+![alt text](NUS-CPU-03-no-mulmul.png)
 
 ---
 
