@@ -2,17 +2,21 @@
 
 ## N64-Revision-Test 
 
-this tool aims to aid in N64 hardware revision identification. bonus iQue Player compatibility.
+this tool aims to aid in N64 hardware revision identification. bonus iQue Player compatibility. 
+
+information is printed to the screen directly (and to the debug output, which includes some additional RDRAM details when run on N64 hardware). all tests give expected results per hardware revision thus far. tested on NTSC, MPAL, iQue. awaiting PAL testing. 
+
+corresponding console mainboard currently specific to NTSC case pending more testing of regional variants. 
 
 in terms of NTSC:  
 
-| period | identification                    | range                      |
-|--------|-----------------------------------|----------------------------|
-| early  | mulmul FAIL                       | NUS-CPU-01 to NUS-CPU-03   |
-| mid    | mulmul PASS + base 2x18Mbit RDRAM | NUS-CPU-03 to NUS-CPU-05-1 |
-| late   | base 1x36Mbit RDRAM               | NUS-CPU-06 to NUS-CPU-09-1 |
+| period | identification                    | range                           |
+|--------|-----------------------------------|---------------------------------|
+| early  | mulmul FAIL                       | NUS-CPU-01 through NUS-CPU-03   |
+| mid    | mulmul PASS + base 2x18Mbit RDRAM | NUS-CPU-03 through NUS-CPU-05-1 |
+| late   | base 1x36Mbit RDRAM               | NUS-CPU-06 through NUS-CPU-09-1 |
 
-information is printed to the screen directly (and to the debug output, which includes some additional RDRAM details when run on N64 hardware). 
+early NUS-CPU-03 units FAIL mulmul; all later units (including later NUS-CPU-03 units) PASS.
 
 -----
 
@@ -26,34 +30,30 @@ also:
 
 ---
 
-tested on NTSC, MPAL, iQue. awaiting PAL testing. 
-
----
-
-mulmul probe confirmed to FAIL on 3 units known to be affected - all other units PASS. all tests give expected results on hardware.
-
-NUS-CPU-03 (mulmul PASS) example output:  
-![alt text](NUS-CPU-03-no-mulmul.png)
-
----
-
 **identifier registers**
 
-| register   | field  | label          | known values    | notes                |
-|------------|--------|----------------|-----------------|----------------------|
-| CP0 PRId   | [15:8] | processor ID   | `0x0B`          | VR4300               |
-| CP0 PRId   | [7:0]  | revision       | varies          | see below            |
-| CP1 FCR0   | [15:8] | implementation | `0x0A` / `0x0B` | retail / iQue        |
-| CP1 FCR0   | [7:0]  | revision       | `0x00`          | all known units      |
-| MI_VERSION | [7:0]  | IO version     | `0x02` / `0x03` | retail / Analogue 3D |
+| register   | field  | label          | known values    | notes             |
+|------------|--------|----------------|-----------------|-------------------|
+| CP0 PRId   | [15:8] | processor ID   | `0x0B`          | VR4300            |
+| CP0 PRId   | [7:0]  | revision       | varies          | see below         |
+| CP1 FCR0   | [15:8] | implementation | `0x0A` / `0x0B` | N64 / iQue        |
+| CP1 FCR0   | [7:0]  | revision       | `0x00`          | all known units   |
+| MI_VERSION | [7:0]  | IO version     | `0x02` / `0x03` | N64 / Analogue 3D |
 
 **observed PRId revisions**
 
-| rev    | unit              |
-|--------|-------------------|
-| `0x10` | 1.0               |
-| `0x22` | 2.2               |
-| `0x40` | 4.0 (iQue Player) |
+| rev    | unit              | mulmul expected result          |
+|--------|-------------------|---------------------------------|
+| `0x10` | 1.0               | FAIL  got=`0x05770421_05770422` |
+| `0x22` | 2.2               | PASS                            |
+| `0x40` | 4.0 (iQue Player) | PASS                            |
+
+**base RDRAM configuration**
+
+| base config | NTSC hardware range             |
+|-------------|---------------------------------|
+| 2x18Mbit    | NUS-CPU-01 through NUS-CPU-05-1 |
+| 1x36Mbit    | NUS-CPU-06 through NUS-CPU-09-1 |
 
 ---
 
@@ -67,6 +67,11 @@ NUS-CPU-03 (mulmul PASS) example output:
 | `div` | 32-bit signed divide sign-extension anomaly | https://n64brew.dev/wiki/VR4300#Sign_extension_bugs |
 
 the `mulmul` probe uses a specific input pattern (`7F800000 * 37BAD25F, 38978B5D * 0C50A394`) confirmed to trigger the bug on affected hardware per logs provided by Buu42. original ctest.z64 test by HailtoDodongo; test here fixed by Jhynjhiruu.
+
+mulmul probe confirmed to FAIL on at least 3 units known to be affected - all later units PASS. 
+
+NUS-CPU-03 (mulmul PASS) example output:  
+![alt text](NUS-CPU-03-no-mulmul.png)
 
 ---
 
