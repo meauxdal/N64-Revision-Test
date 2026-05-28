@@ -1,8 +1,8 @@
 [![Build N64 ROM](https://github.com/meauxdal/N64-Revision-Test/actions/workflows/build.yml/badge.svg)](https://github.com/meauxdal/N64-Revision-Test/actions/workflows/build.yml)
 
-## N64-Revision-Test 
+## revision test ROM for N64
 
-this tool aims to aid in N64 hardware revision identification. bonus iQue Player compatibility. 
+this tool aims to aid in N64 hardware revision identification. bonus iQue Player compatibility. built with libdragon preview. 
 
 information is printed to the screen directly (and to the debug output, which includes some additional RDRAM details when run on N64 hardware). all tests give expected results per hardware revision thus far. tested on NTSC, MPAL, iQue. awaiting PAL testing. 
 
