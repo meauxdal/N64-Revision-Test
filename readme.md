@@ -22,11 +22,11 @@ early NUS-CPU-03 units FAIL mulmul; all later units (including later NUS-CPU-03 
 
 also:
 - reports PAL/NTSC/MPAL tvtype
-- detects cold/warm boot
-- detects 2x18Mbit (≤ NUS-CPU-05-1) vs 1x36Mbit RDRAM (≥ NUS-CPU-06) configurations via DeviceID + manufacturer + mfr. code
-- detects Expansion Pak (expak 1x36Mbit RDRAM) + manufacturer + mfr. code
+- reports cold/warm boot
+- reports 2x18Mbit (≤ NUS-CPU-05-1) vs 1x36Mbit RDRAM (≥ NUS-CPU-06) configurations via DeviceID + manufacturer + mfr. code
+- reports Expansion Pak (expak 1x36Mbit RDRAM) + manufacturer + mfr. code
 - debugf additionally dumps all potentially identifying RDRAM registers (this is a bit overkill for now but helps corroborate interpreted results)
-- (iQue Player-only) detects NAND ID (manufacturer + part no. + size) 
+- (iQue Player-only) reports NAND ID (manufacturer + part no. + size) 
 
 ---
 
