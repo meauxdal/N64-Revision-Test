@@ -4,21 +4,7 @@
 
 this tool aims to aid in N64 hardware revision identification. bonus iQue Player compatibility. built with libdragon preview. 
 
-information is printed to the screen directly (and to the debug output, which includes some additional RDRAM details when run on N64 hardware). all tests give expected results per hardware revision thus far. tested on NTSC, MPAL, iQue. awaiting PAL testing. 
-
-corresponding console mainboard currently specific to NTSC case pending more testing of regional variants. 
-
-in terms of NTSC:  
-
-| period | identification                    | range                           |
-|--------|-----------------------------------|---------------------------------|
-| early  | mulmul FAIL                       | NUS-CPU-01 through NUS-CPU-03   |
-| mid    | mulmul PASS + base 2x18Mbit RDRAM | NUS-CPU-03 through NUS-CPU-05-1 |
-| late   | base 1x36Mbit RDRAM               | NUS-CPU-06 through NUS-CPU-09-1 |
-
-early NUS-CPU-03 units FAIL mulmul; all later units (including later NUS-CPU-03 units) PASS.
-
------
+information is printed to the screen directly (and to USB debug output, which includes additional RDRAM detail)
 
 also:
 - reports PAL/NTSC/MPAL tvtype
@@ -27,6 +13,16 @@ also:
 - reports Expansion Pak (expak 1x36Mbit RDRAM) + manufacturer + mfr. code
 - debugf additionally dumps all potentially identifying RDRAM registers (this is a bit overkill for now but helps corroborate interpreted results)
 - (iQue Player-only) reports NAND ID (manufacturer + part no. + size) 
+
+---
+
+for now, all tables below specific to **NTSC** case pending more testing of regional variants. 
+
+| period | identification                    | range                                |
+|--------|-----------------------------------|--------------------------------------|
+| early  | mulmul FAIL                       | NUS-CPU-01 to early NUS-CPU-03     |
+| mid    | mulmul PASS + base 2x18Mbit RDRAM | late NUS-CPU-03 through NUS-CPU-05-1 |
+| late   | base 1x36Mbit RDRAM               | NUS-CPU-06 through NUS-CPU-09-1      |
 
 ---
 
@@ -42,11 +38,11 @@ also:
 
 **observed PRId revisions**
 
-| rev    | unit              | mulmul expected result          |
-|--------|-------------------|---------------------------------|
-| `0x10` | 1.0               | FAIL  got=`0x05770421_05770422` |
-| `0x22` | 2.2               | PASS                            |
-| `0x40` | 4.0 (iQue Player) | PASS                            |
+| rev    | unit                                 | mulmul probe expected result    |
+|--------|--------------------------------------|---------------------------------|
+| `0x10` | 1.0 (NUS-CPU-01 to early NUS-CPU-03) | FAIL  got=`0x05770421_05770422` |
+| `0x22` | 2.2 (late NUS-CPU-03 and later)      | PASS                            |
+| `0x40` | 4.0 (iQue Player)                    | PASS                            |
 
 **base RDRAM configuration**
 
@@ -120,12 +116,12 @@ ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak).
 - div    - FAIL  got=`0x0000000A_00000000` (different than hardware)
 
 **Analogue 3D**
-- PRId `0x????????`, FCR0 `0x????????`
-- MI_VERSION: `0x??????03` (IO `0x03`)
-- mulmul - ?
-- sra    - ?
-- mult   - ?
-- div    - ?
+- PRId `0x00000B22`, FCR0 `0x00000A00`
+- MI_VERSION: `0x03020203` (IO `0x03`)
+- mulmul - PASS
+- sra    - FAIL  got=`0x00000000_456789AB`
+- mult   - FAIL  got=`0xFFFFFFFE_00000002`
+- div    - FAIL  got=`0x2AAAAAB4_AAAAAAAB`
 
 ---
 
