@@ -14,13 +14,20 @@ also:
 - debugf additionally dumps all potentially identifying RDRAM registers (this is a bit overkill for now but helps corroborate interpreted results)
 - (iQue Player-only) reports NAND ID (manufacturer + part no. + size) 
 
+probes several known CPU hardware bugs. semantically:
+
+| result | meaning                                              |
+|--------|------------------------------------------------------|
+| `FAIL` | bug present; behavior matches corresponding hardware |
+| `PASS` | bug absent; behavior matches VR4300 manual           |
+
 ---
 
-for now, all tables below specific to **NTSC** case pending more testing of regional variants. 
+tables below specific to **NTSC** unless otherwise noted, pending more testing of regional variants. 
 
 | period | identification                    | range                                |
 |--------|-----------------------------------|--------------------------------------|
-| early  | mulmul FAIL                       | NUS-CPU-01 to early NUS-CPU-03     |
+| early  | mulmul FAIL                       | NUS-CPU-01 to early NUS-CPU-03       |
 | mid    | mulmul PASS + base 2x18Mbit RDRAM | late NUS-CPU-03 through NUS-CPU-05-1 |
 | late   | base 1x36Mbit RDRAM               | NUS-CPU-06 through NUS-CPU-09-1      |
 
@@ -62,7 +69,7 @@ for now, all tables below specific to **NTSC** case pending more testing of regi
 | `mult` | 32-bit signed multiply sign-extension anomaly | https://n64brew.dev/wiki/VR4300#Sign_extension_bugs |
 | `div` | 32-bit signed divide sign-extension anomaly | https://n64brew.dev/wiki/VR4300#Sign_extension_bugs |
 
-the `mulmul` probe uses a specific input pattern (`7F800000 * 37BAD25F, 38978B5D * 0C50A394`) confirmed to trigger the bug on affected hardware per logs provided by Buu42. original ctest.z64 test by HailtoDodongo; test here fixed by Jhynjhiruu.
+the `mulmul` probe uses a specific input pattern (`7F800000 * 37BAD25F, 38978B5D * 0C50A394`) confirmed to trigger the bug on affected hardware per logs provided by Buu42. original mulmul test by HailtoDodongo; test here fixed by Jhynjhiruu.
 
 mulmul probe confirmed to FAIL on at least 3 units known to be affected - all later units PASS. 
 
@@ -73,9 +80,7 @@ NUS-CPU-03 (mulmul PASS) example output:
 
 **observed output**
 
-ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak). 
-
-**rev 0x10 (mulmul bug present)**
+**N64 (NUS-CPU-01 to early NUS-CPU-03, early NUS-CPU(P)-01, early NUS-CPU(M)-01) - CPU rev 0x10 (mulmul bug present)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`
 - MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - FAIL  got=`0x05770421_05770422`
@@ -83,7 +88,7 @@ ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak).
 - mult   - FAIL  got=`0xFFFFFFFE_00000002`
 - div    - FAIL  got=`0x2AAAAAB4_AAAAAAAB`
 
-**rev 0x22 (mulmul bug fixed)**
+**N64 - (late NUS-CPU-03 and later, late NUS-CPU(P)-01 and later, late NUS-CPU(M)-01 and later) - CPU rev 0x22 (mulmul bug fixed)**
 - PRId `0x00000B22`, FCR0 `0x00000A00`
 - MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - PASS
@@ -99,7 +104,7 @@ ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak).
 - mult   - FAIL  got=`0xFFFFFFFE_00000002`
 - div    - FAIL  got=`0x2AAAAAB4_AAAAAAAB`
 
-**ares v147-122-g0394fd90a**
+**ares v148**
 - PRId `0x00000B22`, FCR0 `0x00000A00`
 - MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - PASS
@@ -122,6 +127,16 @@ ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak).
 - sra    - FAIL  got=`0x00000000_456789AB`
 - mult   - FAIL  got=`0xFFFFFFFE_00000002`
 - div    - FAIL  got=`0x2AAAAAB4_AAAAAAAB`
+
+**M64 (as of June 2, 2026)**
+- PRId `0x00000B22`, FCR0 `0x00000A00`
+- MI_VERSION `0x02020102` (IO `0x02`)
+- mulmul - PASS
+- sra    - FAIL  got=`0x00000000_456789AB`
+- mult   - PASS
+- div    - FAIL  got=`0x0000000A_00000000` (different than hardware)
+
+RDRAM ID counting accounts for (unrealized) 9Mbit RAM modules (retail N64s and expansion paks exclusively use 2x18Mbit or 1x36Mbit configurations). IDs 0, 2, 4 and 6 refer to the 4 slots actually utilized on retail N64s (double-capacity RDRAM36 modules occupy two slots). ID=4 and ID=6 are only printed if expansion pak RAM is detected (has_expak). 
 
 ---
 
