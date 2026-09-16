@@ -73,25 +73,49 @@ static uint32_t read_mi_version(void) {
 /* -------------------------------------------------------------------------
  * VI timing
  *
- * NTSC and MPAL use the same 525-line geometry here so that the measured
- * difference comes from the region-specific VI clock, not from register
- * programming.  The console has already selected its native video preset
- * from osTvType before these timing registers are normalized.
+ * console_init selects libdragon's native progressive preset from osTvType.
+ * Capture and validate that preset without modifying it, then measure the
+ * resulting interval between VI interrupts.
  * ---------------------------------------------------------------------- */
 
 #define VI_V_SYNC_REG      ((volatile uint32_t *)0xA4400018)
 #define VI_H_SYNC_REG      ((volatile uint32_t *)0xA440001C)
 #define VI_H_SYNC_LEAP_REG ((volatile uint32_t *)0xA4400020)
 
-#define VI_TEST_V_SYNC      0x0000020D
-#define VI_TEST_H_SYNC      0x00000C15
-#define VI_TEST_H_SYNC_LEAP 0x0C150C15
 #define VI_TIMING_SAMPLES   256
 
 typedef struct {
     uint64_t total_ticks;
     uint32_t samples;
+    uint32_t v_sync;
+    uint32_t h_sync;
+    uint32_t h_sync_leap;
 } vi_timing_result_t;
+
+typedef struct {
+    uint32_t v_sync;
+    uint32_t h_sync;
+    uint32_t h_sync_leap;
+} vi_registers_t;
+
+static vi_registers_t expected_vi_registers(tv_type_t tv_type) {
+    switch (tv_type) {
+        case TV_PAL:
+            return (vi_registers_t){ 0x00000271, 0x00150C69, 0x0C6F0C6E };
+        case TV_NTSC:
+            return (vi_registers_t){ 0x0000020D, 0x00000C15, 0x0C150C15 };
+        case TV_MPAL:
+            return (vi_registers_t){ 0x0000020D, 0x00040C11, 0x0C190C1A };
+    }
+    return (vi_registers_t){0};
+}
+
+static bool vi_registers_match(tv_type_t tv_type, vi_timing_result_t timing) {
+    vi_registers_t expected = expected_vi_registers(tv_type);
+    return timing.v_sync == expected.v_sync &&
+           timing.h_sync == expected.h_sync &&
+           timing.h_sync_leap == expected.h_sync_leap;
+}
 
 static volatile uint32_t vi_last_tick;
 static volatile uint32_t vi_sample_count;
@@ -114,9 +138,9 @@ static vi_timing_result_t measure_vi_timing(void) {
     vi_total_ticks = 0;
 
     disable_interrupts();
-    *VI_V_SYNC_REG = VI_TEST_V_SYNC;
-    *VI_H_SYNC_REG = VI_TEST_H_SYNC;
-    *VI_H_SYNC_LEAP_REG = VI_TEST_H_SYNC_LEAP;
+    uint32_t v_sync = *VI_V_SYNC_REG;
+    uint32_t h_sync = *VI_H_SYNC_REG;
+    uint32_t h_sync_leap = *VI_H_SYNC_LEAP_REG;
     register_VI_handler(vi_timing_callback);
     enable_interrupts();
 
@@ -127,6 +151,9 @@ static vi_timing_result_t measure_vi_timing(void) {
     return (vi_timing_result_t){
         .total_ticks = vi_total_ticks,
         .samples = vi_sample_count,
+        .v_sync = v_sync,
+        .h_sync = h_sync,
+        .h_sync_leap = h_sync_leap,
     };
 }
 
@@ -546,8 +573,11 @@ static void report(bool is_ique,
     uint64_t refresh_100000 =
         ((uint64_t)TICKS_PER_SECOND * vi_timing.samples * 100000 +
          vi_timing.total_ticks / 2) / vi_timing.total_ticks;
-    printf("VI C15/20D  %lu frames: %lu.%lu ticks  %lu.%05lu Hz\n",
-           (unsigned long)vi_timing.samples,
+    printf("VI %s V/H/L=%03lX/%08lX/%08lX %lu.%lut %lu.%05luHz\n",
+           vi_registers_match(tv_type, vi_timing) ? "OK" : "BAD",
+           (unsigned long)vi_timing.v_sync,
+           (unsigned long)vi_timing.h_sync,
+           (unsigned long)vi_timing.h_sync_leap,
            (unsigned long)(average_tenths / 10),
            (unsigned long)(average_tenths % 10),
            (unsigned long)(refresh_100000 / 100000),

@@ -8,8 +8,8 @@ information is printed to the screen directly (and to USB debug output, which in
 
 also:
 - reports PAL/NTSC/MPAL tvtype
-- measures the VI refresh interval over 256 frames using identical 525-line
-  timing registers (`H_SYNC=0xC15`, `V_SYNC=0x20D`) for NTSC and MPAL
+- validates the native progressive VI timing registers selected for PAL,
+  NTSC, or MPAL and measures the resulting refresh interval over 256 frames
 - reports cold/warm boot
 - reports 2x18Mbit (≤ NUS-CPU-05-1) vs 1x36Mbit RDRAM (≥ NUS-CPU-06) configurations via DeviceID + manufacturer + mfr. code
 - reports Expansion Pak (expak 1x36Mbit RDRAM) + manufacturer + mfr. code
@@ -82,16 +82,20 @@ NUS-CPU-03 (mulmul PASS) example output:
 
 **observed output**
 
-For the VI timing line, expected values are approximately:
+The VI timing line checks the live `V_SYNC`, `H_SYNC`, and `H_SYNC_LEAP`
+registers against libdragon's native 640x240 progressive preset, then reports
+the measured interval and refresh rate without changing those registers:
 
-| mode | Count ticks/frame | refresh rate |
-|------|------------------:|-------------:|
-| NTSC | 781,778.5 | 59.95944 Hz |
-| MPAL | 782,638.5 | 59.89355 Hz |
+| mode | `V_SYNC` | `H_SYNC` | `H_SYNC_LEAP` | target refresh |
+|------|---------:|---------:|--------------:|---------------:|
+| PAL  | `0x271` | `0x00150C69` | `0x0C6F0C6E` | 49.920128 Hz |
+| NTSC | `0x20D` | `0x00000C15` | `0x0C150C15` | 59.826105 Hz |
+| MPAL | `0x20D` | `0x00040C11` | `0x0C190C1A` | 59.837074 Hz |
 
-MPAL should therefore measure about 860 Count ticks (0.110%) longer per
-frame than NTSC. Reaching this ROM with `tv: MPAL`, followed by the MPAL
-interval, verifies the MPAL PIF boot result and VI clock together.
+`VI OK` means that the live registers match the expected preset for the
+reported TV type; `VI BAD` prints the unexpected live values for diagnosis.
+Reaching the ROM with `tv: MPAL`, the MPAL register set, and MPAL timing
+verifies the MPAL PIF boot result, software mode selection, and VI clock.
 
 **N64 (NUS-CPU-01 to early NUS-CPU-03, early NUS-CPU(P)-01, early NUS-CPU(M)-01) - CPU rev 0x10 (mulmul bug present)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`
