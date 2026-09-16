@@ -8,6 +8,8 @@ information is printed to the screen directly (and to USB debug output, which in
 
 also:
 - reports PAL/NTSC/MPAL tvtype
+- measures the VI refresh interval over 256 frames using identical 525-line
+  timing registers (`H_SYNC=0xC15`, `V_SYNC=0x20D`) for NTSC and MPAL
 - reports cold/warm boot
 - reports 2x18Mbit (≤ NUS-CPU-05-1) vs 1x36Mbit RDRAM (≥ NUS-CPU-06) configurations via DeviceID + manufacturer + mfr. code
 - reports Expansion Pak (expak 1x36Mbit RDRAM) + manufacturer + mfr. code
@@ -79,6 +81,17 @@ NUS-CPU-03 (mulmul PASS) example output:
 ---
 
 **observed output**
+
+For the VI timing line, expected values are approximately:
+
+| mode | Count ticks/frame | refresh rate |
+|------|------------------:|-------------:|
+| NTSC | 781,778.5 | 59.95944 Hz |
+| MPAL | 782,638.5 | 59.89355 Hz |
+
+MPAL should therefore measure about 860 Count ticks (0.110%) longer per
+frame than NTSC. Reaching this ROM with `tv: MPAL`, followed by the MPAL
+interval, verifies the MPAL PIF boot result and VI clock together.
 
 **N64 (NUS-CPU-01 to early NUS-CPU-03, early NUS-CPU(P)-01, early NUS-CPU(M)-01) - CPU rev 0x10 (mulmul bug present)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`

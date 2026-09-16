@@ -71,6 +71,66 @@ static uint32_t read_mi_version(void) {
 }
 
 /* -------------------------------------------------------------------------
+ * VI timing
+ *
+ * NTSC and MPAL use the same 525-line geometry here so that the measured
+ * difference comes from the region-specific VI clock, not from register
+ * programming.  The console has already selected its native video preset
+ * from osTvType before these timing registers are normalized.
+ * ---------------------------------------------------------------------- */
+
+#define VI_V_SYNC_REG      ((volatile uint32_t *)0xA4400018)
+#define VI_H_SYNC_REG      ((volatile uint32_t *)0xA440001C)
+#define VI_H_SYNC_LEAP_REG ((volatile uint32_t *)0xA4400020)
+
+#define VI_TEST_V_SYNC      0x0000020D
+#define VI_TEST_H_SYNC      0x00000C15
+#define VI_TEST_H_SYNC_LEAP 0x0C150C15
+#define VI_TIMING_SAMPLES   256
+
+typedef struct {
+    uint64_t total_ticks;
+    uint32_t samples;
+} vi_timing_result_t;
+
+static volatile uint32_t vi_last_tick;
+static volatile uint32_t vi_sample_count;
+static volatile uint64_t vi_total_ticks;
+
+static void vi_timing_callback(void) {
+    uint32_t now = TICKS_READ();
+
+    if (vi_last_tick != 0 && vi_sample_count < VI_TIMING_SAMPLES) {
+        vi_total_ticks += (uint32_t)TICKS_DISTANCE(vi_last_tick, now);
+        vi_sample_count++;
+    }
+
+    vi_last_tick = now;
+}
+
+static vi_timing_result_t measure_vi_timing(void) {
+    vi_last_tick = 0;
+    vi_sample_count = 0;
+    vi_total_ticks = 0;
+
+    disable_interrupts();
+    *VI_V_SYNC_REG = VI_TEST_V_SYNC;
+    *VI_H_SYNC_REG = VI_TEST_H_SYNC;
+    *VI_H_SYNC_LEAP_REG = VI_TEST_H_SYNC_LEAP;
+    register_VI_handler(vi_timing_callback);
+    enable_interrupts();
+
+    while (vi_sample_count < VI_TIMING_SAMPLES) {}
+
+    unregister_VI_handler(vi_timing_callback);
+
+    return (vi_timing_result_t){
+        .total_ticks = vi_total_ticks,
+        .samples = vi_sample_count,
+    };
+}
+
+/* -------------------------------------------------------------------------
  * RDRAM register access
  * ---------------------------------------------------------------------- */
 
@@ -469,6 +529,7 @@ static void report(bool is_ique,
                    bool expak_single_chip,
                    rdram_manufacturer_t rdram[4],
                    uint8_t nand_id[4],
+                   vi_timing_result_t vi_timing,
                    const probe_result_t *results)
 {
     printf("====================== N64-Revision-Test ======================\n");
@@ -479,6 +540,18 @@ static void report(bool is_ique,
         printf("console: N64,  reset: %s,  tv: %s\n",
                reset_type_str(reset_type), tv_type_str(tv_type));
     }
+
+    uint64_t average_tenths =
+        (vi_timing.total_ticks * 10 + vi_timing.samples / 2) / vi_timing.samples;
+    uint64_t refresh_100000 =
+        ((uint64_t)TICKS_PER_SECOND * vi_timing.samples * 100000 +
+         vi_timing.total_ticks / 2) / vi_timing.total_ticks;
+    printf("VI C15/20D  %lu frames: %lu.%lu ticks  %lu.%05lu Hz\n",
+           (unsigned long)vi_timing.samples,
+           (unsigned long)(average_tenths / 10),
+           (unsigned long)(average_tenths % 10),
+           (unsigned long)(refresh_100000 / 100000),
+           (unsigned long)(refresh_100000 % 100000));
     printf("\n");
 
     printf("CP0 PRId    (reg 15)        0x%08lX\n", (unsigned long)prid);
@@ -547,6 +620,12 @@ int main(void) {
     console_set_render_mode(RENDER_MANUAL);
     console_clear();
 
+    printf("Measuring VI timing over %u frames...\n", VI_TIMING_SAMPLES);
+    console_render();
+
+    vi_timing_result_t vi_timing = measure_vi_timing();
+    console_clear();
+
     /* --- Phase 1: collect --- */
 
     bool         is_ique    = sys_bbplayer();
@@ -594,7 +673,7 @@ int main(void) {
     report(is_ique, tv_type, reset_type,
            prid, fcr0, mi_version,
            has_expak, base_single_chip, expak_single_chip,
-           rdram, nand_id, results);
+           rdram, nand_id, vi_timing, results);
 
     console_render();
 
