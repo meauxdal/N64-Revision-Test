@@ -82,9 +82,10 @@ NUS-CPU-03 (mulmul PASS) example output:
 
 **observed output**
 
-The VI timing line checks the live `V_SYNC`, `H_SYNC`, and `H_SYNC_LEAP`
-registers against libdragon's native 640x240 progressive preset, then reports
-the measured interval and refresh rate without changing those registers:
+The onscreen console-identification line includes the measured VI refresh rate.
+USB/emulator debug output additionally checks the live `V_SYNC`, `H_SYNC`, and
+`H_SYNC_LEAP` registers against libdragon's native 640x240 progressive preset
+and reports the 256-frame average without changing those registers:
 
 | mode | `V_SYNC` | `H_SYNC` | `H_SYNC_LEAP` | target refresh |
 |------|---------:|---------:|--------------:|---------------:|
@@ -92,8 +93,9 @@ the measured interval and refresh rate without changing those registers:
 | NTSC | `0x20D` | `0x00000C15` | `0x0C150C15` | 59.826105 Hz |
 | MPAL | `0x20D` | `0x00040C11` | `0x0C190C1A` | 59.837074 Hz |
 
-`VI OK` means that the live registers match the expected preset for the
-reported TV type; `VI BAD` prints the unexpected live values for diagnosis.
+In debug output, `VI OK` means that the live registers match the expected
+preset for the reported TV type; `VI BAD` prints the unexpected live values
+for diagnosis.
 Reaching the ROM with `tv: MPAL`, the MPAL register set, and MPAL timing
 verifies the MPAL PIF boot result, software mode selection, and VI clock.
 

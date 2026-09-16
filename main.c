@@ -561,23 +561,29 @@ static void report(bool is_ique,
 {
     printf("====================== N64-Revision-Test ======================\n");
 
-    if (is_ique) {
-        printf("console: iQue Player\n");
-    } else {
-        printf("console: N64,  reset: %s,  tv: %s\n",
-               reset_type_str(reset_type), tv_type_str(tv_type));
-    }
-
     uint64_t average_tenths =
         (vi_timing.total_ticks * 10 + vi_timing.samples / 2) / vi_timing.samples;
     uint64_t refresh_100000 =
         ((uint64_t)TICKS_PER_SECOND * vi_timing.samples * 100000 +
          vi_timing.total_ticks / 2) / vi_timing.total_ticks;
-    printf("VI %s V/H/L=%03lX/%08lX/%08lX %lu.%lut %lu.%05luHz\n",
+
+    if (is_ique) {
+        printf("console: iQue Player,  VI: %lu.%05lu Hz\n",
+               (unsigned long)(refresh_100000 / 100000),
+               (unsigned long)(refresh_100000 % 100000));
+    } else {
+        printf("console: N64,  reset: %s,  tv: %s,  VI: %lu.%05lu Hz\n",
+               reset_type_str(reset_type), tv_type_str(tv_type),
+               (unsigned long)(refresh_100000 / 100000),
+               (unsigned long)(refresh_100000 % 100000));
+    }
+
+    debugf("VI %s V/H/L=%03lX/%08lX/%08lX %lu frames: %lu.%lu ticks, %lu.%05lu Hz\n",
            vi_registers_match(tv_type, vi_timing) ? "OK" : "BAD",
            (unsigned long)vi_timing.v_sync,
            (unsigned long)vi_timing.h_sync,
            (unsigned long)vi_timing.h_sync_leap,
+           (unsigned long)vi_timing.samples,
            (unsigned long)(average_tenths / 10),
            (unsigned long)(average_tenths % 10),
            (unsigned long)(refresh_100000 / 100000),
