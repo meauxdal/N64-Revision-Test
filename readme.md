@@ -8,12 +8,11 @@ information is printed to the screen directly (and to USB debug output, which in
 
 also:
 - reports PAL/NTSC/MPAL tvtype
-- validates the native progressive VI timing registers selected for PAL,
-  NTSC, or MPAL and measures the resulting refresh interval over 256 frames
+- reports estimated vertical refresh sampled over 256 frames
 - reports cold/warm boot
 - reports 2x18Mbit (≤ NUS-CPU-05-1) vs 1x36Mbit RDRAM (≥ NUS-CPU-06) configurations via DeviceID + manufacturer + mfr. code
 - reports Expansion Pak (expak 1x36Mbit RDRAM) + manufacturer + mfr. code
-- debugf additionally dumps all potentially identifying RDRAM registers (this is a bit overkill for now but helps corroborate interpreted results)
+- debugf additionally dumps all potentially identifying RDRAM registers + VI timing registers for VSYNC / HSYNC / leap
 - (iQue Player-only) reports NAND ID (manufacturer + part no. + size) 
 
 probes several known CPU hardware bugs. semantically:
@@ -93,9 +92,9 @@ and reports the 256-frame average without changing those registers:
 | NTSC | `0x20D` | `0x00000C15` | `0x0C150C15` | 59.826105 Hz |
 | MPAL | `0x20D` | `0x00040C11` | `0x0C190C1A` | 59.837074 Hz |
 
-In debug output, `VI OK` means that the live registers match the expected
-preset for the reported TV type; `VI BAD` prints the unexpected live values
-for diagnosis.
+USB/emulator debug output reports the live `V_SYNC`, `H_SYNC`, and
+`H_SYNC_LEAP` registers along with the 256-frame average and measured refresh
+rate for diagnosis.
 Reaching the ROM with `tv: MPAL`, the MPAL register set, and MPAL timing
 verifies the MPAL PIF boot result, software mode selection, and VI clock.
 

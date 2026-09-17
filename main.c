@@ -74,8 +74,8 @@ static uint32_t read_mi_version(void) {
  * VI timing
  *
  * console_init selects libdragon's native progressive preset from osTvType.
- * Capture and validate that preset without modifying it, then measure the
- * resulting interval between VI interrupts.
+ * Capture that preset without modifying it, then measure the resulting
+ * interval between VI interrupts.
  * ---------------------------------------------------------------------- */
 
 #define VI_V_SYNC_REG      ((volatile uint32_t *)0xA4400018)
@@ -91,31 +91,6 @@ typedef struct {
     uint32_t h_sync;
     uint32_t h_sync_leap;
 } vi_timing_result_t;
-
-typedef struct {
-    uint32_t v_sync;
-    uint32_t h_sync;
-    uint32_t h_sync_leap;
-} vi_registers_t;
-
-static vi_registers_t expected_vi_registers(tv_type_t tv_type) {
-    switch (tv_type) {
-        case TV_PAL:
-            return (vi_registers_t){ 0x00000271, 0x00150C69, 0x0C6F0C6E };
-        case TV_NTSC:
-            return (vi_registers_t){ 0x0000020D, 0x00000C15, 0x0C150C15 };
-        case TV_MPAL:
-            return (vi_registers_t){ 0x0000020D, 0x00040C11, 0x0C190C1A };
-    }
-    return (vi_registers_t){0};
-}
-
-static bool vi_registers_match(tv_type_t tv_type, vi_timing_result_t timing) {
-    vi_registers_t expected = expected_vi_registers(tv_type);
-    return timing.v_sync == expected.v_sync &&
-           timing.h_sync == expected.h_sync &&
-           timing.h_sync_leap == expected.h_sync_leap;
-}
 
 static volatile uint32_t vi_last_tick;
 static volatile uint32_t vi_sample_count;
@@ -568,18 +543,17 @@ static void report(bool is_ique,
          vi_timing.total_ticks / 2) / vi_timing.total_ticks;
 
     if (is_ique) {
-        printf("console: iQue Player,  fV: %lu.%05lu Hz\n",
+        printf("console: iQue Player,  fV: ~%lu.%05lu Hz\n",
                (unsigned long)(refresh_100000 / 100000),
                (unsigned long)(refresh_100000 % 100000));
     } else {
-        printf("console: N64,  reset: %s,  tv: %s,  fV: %lu.%05lu Hz\n",
+        printf("console: N64,  reset: %s,  tv: %s,  fV: ~%lu.%05lu Hz\n",
                reset_type_str(reset_type), tv_type_str(tv_type),
                (unsigned long)(refresh_100000 / 100000),
                (unsigned long)(refresh_100000 % 100000));
     }
 
-    debugf("VI %s V/H/L=%03lX/%08lX/%08lX %lu frames: %lu.%lu ticks, %lu.%05lu Hz\n",
-           vi_registers_match(tv_type, vi_timing) ? "OK" : "BAD",
+    debugf("VI V/H/L=%03lX/%08lX/%08lX %lu frames: %lu.%lu ticks, %lu.%05lu Hz\n",
            (unsigned long)vi_timing.v_sync,
            (unsigned long)vi_timing.h_sync,
            (unsigned long)vi_timing.h_sync_leap,
