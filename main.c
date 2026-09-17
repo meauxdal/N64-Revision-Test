@@ -568,11 +568,11 @@ static void report(bool is_ique,
          vi_timing.total_ticks / 2) / vi_timing.total_ticks;
 
     if (is_ique) {
-        printf("console: iQue Player,  VI: %lu.%05lu Hz\n",
+        printf("console: iQue Player,  fV: %lu.%05lu Hz\n",
                (unsigned long)(refresh_100000 / 100000),
                (unsigned long)(refresh_100000 % 100000));
     } else {
-        printf("console: N64,  reset: %s,  tv: %s,  VI: %lu.%05lu Hz\n",
+        printf("console: N64,  reset: %s,  tv: %s,  fV: %lu.%05lu Hz\n",
                reset_type_str(reset_type), tv_type_str(tv_type),
                (unsigned long)(refresh_100000 / 100000),
                (unsigned long)(refresh_100000 % 100000));
