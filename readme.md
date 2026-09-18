@@ -8,10 +8,11 @@ information is printed to the screen directly (and to USB debug output, which in
 
 also:
 - reports PAL/NTSC/MPAL tvtype
+- reports estimated vertical refresh sampled over 256 frames
 - reports cold/warm boot
 - reports 2x18Mbit (≤ NUS-CPU-05-1) vs 1x36Mbit RDRAM (≥ NUS-CPU-06) configurations via DeviceID + manufacturer + mfr. code
 - reports Expansion Pak (expak 1x36Mbit RDRAM) + manufacturer + mfr. code
-- debugf additionally dumps all potentially identifying RDRAM registers (this is a bit overkill for now but helps corroborate interpreted results)
+- debugf additionally dumps all potentially identifying RDRAM registers + VI timing registers for VSYNC / HSYNC / leap
 - (iQue Player-only) reports NAND ID (manufacturer + part no. + size) 
 
 probes several known CPU hardware bugs. semantically:
@@ -79,6 +80,23 @@ NUS-CPU-03 (mulmul PASS) example output:
 ---
 
 **observed output**
+
+The onscreen console-identification line includes the measured VI refresh rate.
+USB/emulator debug output additionally checks the live `V_SYNC`, `H_SYNC`, and
+`H_SYNC_LEAP` registers against libdragon's native 640x240 progressive preset
+and reports the 256-frame average without changing those registers:
+
+| mode | `V_SYNC` | `H_SYNC` | `H_SYNC_LEAP` | target refresh |
+|------|---------:|---------:|--------------:|---------------:|
+| PAL  | `0x271` | `0x00150C69` | `0x0C6F0C6E` | 49.920128 Hz |
+| NTSC | `0x20D` | `0x00000C15` | `0x0C150C15` | 59.826105 Hz |
+| MPAL | `0x20D` | `0x00040C11` | `0x0C190C1A` | 59.837074 Hz |
+
+USB/emulator debug output reports the live `V_SYNC`, `H_SYNC`, and
+`H_SYNC_LEAP` registers along with the 256-frame average and measured refresh
+rate for diagnosis.
+Reaching the ROM with `tv: MPAL`, the MPAL register set, and MPAL timing
+verifies the MPAL PIF boot result, software mode selection, and VI clock.
 
 **N64 (NUS-CPU-01 to early NUS-CPU-03, early NUS-CPU(P)-01, early NUS-CPU(M)-01) - CPU rev 0x10 (mulmul bug present)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`
