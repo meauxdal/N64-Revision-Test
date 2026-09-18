@@ -72,31 +72,12 @@ tables below specific to **NTSC** unless otherwise noted, pending more testing o
 
 the `mulmul` probe uses a specific input pattern (`7F800000 * 37BAD25F, 38978B5D * 0C50A394`) confirmed to trigger the bug on affected hardware per logs provided by Buu42. original mulmul test by HailtoDodongo; test here fixed by Jhynjhiruu.
 
-mulmul probe confirmed to FAIL on at least 3 units known to be affected - all later units PASS. 
-
 NUS-CPU-03 (mulmul PASS) example output:  
 ![alt text](NUS-CPU-03-no-mulmul.png)
 
 ---
 
 **observed output**
-
-The onscreen console-identification line includes the measured VI refresh rate.
-USB/emulator debug output additionally checks the live `V_SYNC`, `H_SYNC`, and
-`H_SYNC_LEAP` registers against libdragon's native 640x240 progressive preset
-and reports the 256-frame average without changing those registers:
-
-| mode | `V_SYNC` | `H_SYNC` | `H_SYNC_LEAP` | target refresh |
-|------|---------:|---------:|--------------:|---------------:|
-| PAL  | `0x271` | `0x00150C69` | `0x0C6F0C6E` | 49.920128 Hz |
-| NTSC | `0x20D` | `0x00000C15` | `0x0C150C15` | 59.826105 Hz |
-| MPAL | `0x20D` | `0x00040C11` | `0x0C190C1A` | 59.837074 Hz |
-
-USB/emulator debug output reports the live `V_SYNC`, `H_SYNC`, and
-`H_SYNC_LEAP` registers along with the 256-frame average and measured refresh
-rate for diagnosis.
-Reaching the ROM with `tv: MPAL`, the MPAL register set, and MPAL timing
-verifies the MPAL PIF boot result, software mode selection, and VI clock.
 
 **N64 (NUS-CPU-01 to early NUS-CPU-03, early NUS-CPU(P)-01, early NUS-CPU(M)-01) - CPU rev 0x10 (mulmul bug present)**
 - PRId `0x00000B10`, FCR0 `0x00000A00`
@@ -130,7 +111,7 @@ verifies the MPAL PIF boot result, software mode selection, and VI clock.
 - mult   - FAIL  got=`0xFFFFFFFE_00000002`
 - div    - FAIL  got=`0x0000000A_00000000` (different than hardware)
 
-**MiSTer (N64 core) (20260524 "MTM3" build)**
+**MiSTer (N64 core) (as of September 18, 2026)**
 - PRId `0x00000B22`, FCR0 `0x00000A00`
 - MI_VERSION `0x02020102` (IO `0x02`)
 - mulmul - PASS
